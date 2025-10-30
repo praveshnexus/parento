@@ -1,386 +1,424 @@
-import { motion } from "framer-motion";
-import { Baby, Heart, Activity, Scale, Ruler, Syringe, CheckCircle, Clock, TrendingUp, Calendar } from "lucide-react";
-import { staggerContainer, staggerItem, slideUp, fadeIn, cardHover, hoverScale } from "../utils/animations";
+// src/pages/Track.js
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Baby,
+  TrendingUp,
+  Calendar,
+  Award,
+  Plus,
+  ChevronRight,
+  Activity,
+  Heart,
+  Brain,
+  Smile,
+  CheckCircle,
+  Circle,
+  Edit,
+  Trash2
+} from "lucide-react";
 import PageWrapper from "../components/PageWrapper";
+import { fadeIn, slideUp, cardHover, staggerContainer, staggerItem } from "../utils/animations";
+import { useAuth } from "../context/AuthContext";
+import { getChildAvatar } from "../utils/avatarHelper";
+import { db } from "../firebase/firebase";
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy } from "firebase/firestore";
 
-function Track() {
-  const milestones = [
+export default function Track() {
+  const { currentUser, userData } = useAuth();
+  const [milestones, setMilestones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Milestone categories
+  const categories = ["All", "Physical", "Cognitive", "Social", "Emotional"];
+
+  // Child info (from userData or default)
+  const child = userData?.children?.[0] || {
+    name: "Emma Johnson",
+    age: "2 years 4 months",
+    gender: "Female"
+  };
+
+  // Load milestones from Firestore
+  useEffect(() => {
+    loadMilestones();
+  }, [currentUser]);
+
+  const loadMilestones = async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoading(true);
+      const q = query(
+        collection(db, "milestones"),
+        where("userId", "==", currentUser.uid),
+        orderBy("createdAt", "desc")
+      );
+
+      const querySnapshot = await getDocs(q);
+      const milestonesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setMilestones(milestonesData);
+    } catch (error) {
+      console.error("Error loading milestones:", error);
+      
+      // If no milestones exist, show sample data
+      if (error.code === 'permission-denied' || milestones.length === 0) {
+        setMilestones(getSampleMilestones());
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sample milestones for demo
+  const getSampleMilestones = () => [
     {
+      id: "1",
       category: "Physical",
-      icon: Activity,
-      color: "pink",
-      items: [
-        { name: "First Steps", status: "completed", date: "Jan 15, 2024", description: "Walking independently for 10+ steps" },
-        { name: "Running", status: "in-progress", progress: 75, description: "Short bursts of running, improving balance" },
-        { name: "Jumping", status: "upcoming", description: "Expected in next 2 months" }
-      ]
+      title: "First Steps",
+      description: "Took first steps independently",
+      completed: true,
+      date: "2024-10-15",
+      ageAtCompletion: "12 months"
     },
     {
+      id: "2",
       category: "Cognitive",
-      icon: Baby,
-      color: "blue",
-      items: [
-        { name: "Speaking Words", status: "completed", date: "Dec 20, 2023", description: "Vocabulary of 50+ words" },
-        { name: "Forming Sentences", status: "in-progress", progress: 60, description: "2-3 word phrases consistently" },
-        { name: "Counting", status: "upcoming", description: "Learning numbers 1-10" }
-      ]
+      title: "Says First Words",
+      description: "Said 'mama' and 'dada' clearly",
+      completed: true,
+      date: "2024-09-20",
+      ageAtCompletion: "11 months"
     },
     {
-      category: "Social & Emotional",
-      icon: Heart,
-      color: "green",
-      items: [
-        { name: "Recognizing Faces", status: "completed", date: "Nov 10, 2023", description: "Identifies family members and close friends" },
-        { name: "Playing with Others", status: "in-progress", progress: 80, description: "Engaging in parallel play" },
-        { name: "Sharing Toys", status: "in-progress", progress: 50, description: "Learning to take turns" }
-      ]
+      id: "3",
+      category: "Social",
+      title: "Waves Bye-Bye",
+      description: "Waves when saying goodbye",
+      completed: true,
+      date: "2024-08-10",
+      ageAtCompletion: "10 months"
+    },
+    {
+      id: "4",
+      category: "Physical",
+      title: "Runs Confidently",
+      description: "Can run without falling frequently",
+      completed: false,
+      expectedAge: "24 months"
+    },
+    {
+      id: "5",
+      category: "Cognitive",
+      title: "Names Colors",
+      description: "Can identify and name basic colors",
+      completed: false,
+      expectedAge: "30 months"
     }
   ];
 
-  const healthRecords = [
-    { type: "Height", value: "92 cm", percentile: "75th", date: "Mar 1, 2024", icon: Ruler, color: "blue", change: "+3cm" },
-    { type: "Weight", value: "13.5 kg", percentile: "70th", date: "Mar 1, 2024", icon: Scale, color: "green", change: "+0.5kg" },
-    { type: "Head Circumference", value: "49 cm", percentile: "80th", date: "Mar 1, 2024", icon: Activity, color: "purple", change: "+1cm" }
-  ];
+  // Toggle milestone completion
+  const toggleMilestone = async (milestoneId) => {
+    try {
+      const milestone = milestones.find(m => m.id === milestoneId);
+      
+      if (!milestone.userId) {
+        // Sample data - just update state
+        setMilestones(prev =>
+          prev.map(m =>
+            m.id === milestoneId
+              ? { ...m, completed: !m.completed, date: !m.completed ? new Date().toISOString() : null }
+              : m
+          )
+        );
+        return;
+      }
 
-  const vaccinations = [
-    { name: "MMR Dose 2", date: "Feb 15, 2024", status: "completed" },
-    { name: "Varicella", date: "Apr 10, 2024", status: "upcoming" },
-    { name: "DTaP Booster", date: "May 5, 2024", status: "upcoming" }
-  ];
+      // Real data - update Firestore
+      const milestoneRef = doc(db, "milestones", milestoneId);
+      await updateDoc(milestoneRef, {
+        completed: !milestone.completed,
+        date: !milestone.completed ? new Date().toISOString() : null
+      });
 
-  const colorClasses = {
-    pink: "bg-pink-100 text-pink-600 border-pink-200",
-    blue: "bg-blue-100 text-blue-600 border-blue-200",
-    green: "bg-green-100 text-green-600 border-green-200",
-    purple: "bg-purple-100 text-purple-600 border-purple-200"
+      // Update local state
+      setMilestones(prev =>
+        prev.map(m =>
+          m.id === milestoneId
+            ? { ...m, completed: !m.completed, date: !m.completed ? new Date().toISOString() : null }
+            : m
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling milestone:", error);
+    }
   };
 
-  const progressColors = {
-    pink: "bg-pink-500",
-    blue: "bg-blue-500",
-    green: "bg-green-500"
+  // Add new milestone
+  const addMilestone = async (newMilestone) => {
+    try {
+      const milestoneData = {
+        ...newMilestone,
+        userId: currentUser.uid,
+        createdAt: new Date().toISOString(),
+        completed: false
+      };
+
+      const docRef = await addDoc(collection(db, "milestones"), milestoneData);
+      
+      setMilestones(prev => [{
+        id: docRef.id,
+        ...milestoneData
+      }, ...prev]);
+
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Error adding milestone:", error);
+    }
   };
 
-  const iconBgColors = {
-    pink: "bg-pink-50",
-    blue: "bg-blue-50",
-    green: "bg-green-50",
-    purple: "bg-purple-50"
+  // Filter milestones by category
+  const filteredMilestones = selectedCategory === "All"
+    ? milestones
+    : milestones.filter(m => m.category === selectedCategory);
+
+  const completedCount = milestones.filter(m => m.completed).length;
+  const completionPercentage = milestones.length > 0 
+    ? Math.round((completedCount / milestones.length) * 100)
+    : 0;
+
+  // Category icons
+  const categoryIcons = {
+    Physical: Activity,
+    Cognitive: Brain,
+    Social: Smile,
+    Emotional: Heart
   };
 
   return (
     <PageWrapper>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
-        {/* Header Section */}
-        <motion.div 
-          className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white py-12 px-6 md:px-12 lg:px-20"
+        {/* Header */}
+        <motion.div
+          className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white py-16 px-6 lg:px-20"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
           <div className="max-w-7xl mx-auto">
-            <motion.h1 
-              className="text-4xl md:text-5xl font-bold mb-3"
+            <motion.h1
+              className="text-4xl lg:text-5xl font-bold mb-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              transition={{ delay: 0.2 }}
             >
-              Track Progress 📊
+              Track Development
             </motion.h1>
-            <motion.p 
-              className="text-lg text-white/90"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
+            <motion.p
+              className="text-white/90 text-lg"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
             >
-              Monitor Aarav's growth, development, and health milestones
+              Monitor your child's growth milestones
             </motion.p>
           </div>
         </motion.div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 -mt-8">
-          {/* Child Profile Overview */}
-          <motion.div 
-            className="bg-white rounded-2xl shadow-lg p-8 mb-8"
+        <div className="max-w-7xl mx-auto px-6 lg:px-20 -mt-12">
+          {/* Child Summary Card */}
+          <motion.div
+            className="bg-white rounded-2xl shadow-xl p-8 mb-8"
             {...slideUp}
-            initial="initial"
-            animate="animate"
-            whileHover={{ y: -5 }}
+            {...cardHover}
           >
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              <motion.img
-                src="https://ui-avatars.com/api/?name=Aarav+Sharma&background=f472b6&color=fff&size=120"
-                alt="Child"
-                className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-pink-200"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                transition={{ duration: 0.3 }}
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Child Avatar */}
+              <img
+                src={getChildAvatar(child, 100)}
+                alt={child.name}
+                className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
               />
+
+              {/* Child Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Aarav Sharma</h2>
-                <p className="text-lg text-gray-600 mb-4">2 years 3 months old • Born: January 5, 2022</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">{child.name}</h2>
+                <p className="text-gray-600 text-lg mb-4">{child.age}</p>
                 
-                {/* Health Metrics */}
-                <motion.div 
-                  className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6"
-                  {...staggerContainer}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {healthRecords.map((record, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border"
-                      {...staggerItem}
-                      {...cardHover}
-                    >
-                      <div className={`w-14 h-14 ${iconBgColors[record.color]} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                        <record.icon className={`w-7 h-7 text-${record.color}-500`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-500 mb-1">{record.type}</p>
-                        <p className="text-2xl font-bold text-gray-800">{record.value}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-green-600 font-medium">{record.change} this month</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
+                {/* Progress Bar */}
+                <div className="mb-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+                    <span className="text-sm font-bold text-blue-600">{completionPercentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${completionPercentage}%` }}
+                      transition={{ duration: 1, delay: 0.5 }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  {completedCount} of {milestones.length} milestones completed
+                </p>
               </div>
-              
-              <div className="flex flex-col gap-3">
-                <motion.button 
-                  className="px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-medium transition shadow-sm"
-                  {...hoverScale}
-                >
-                  Add New Record
-                </motion.button>
-                <motion.button 
-                  className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 rounded-xl font-medium transition"
-                  {...hoverScale}
-                >
-                  View Growth Chart
-                </motion.button>
-              </div>
+
+              {/* Add Milestone Button */}
+              <motion.button
+                onClick={() => setShowAddModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold flex items-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Plus className="w-5 h-5" />
+                Add Milestone
+              </motion.button>
             </div>
           </motion.div>
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-            
-            {/* Left: Milestones */}
-            <div className="xl:col-span-3 space-y-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-800">Development Milestones</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4" /> 8 Completed
-                  </span>
-                  <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> 4 In Progress
-                  </span>
-                </div>
-              </div>
-              
-              <motion.div
-                {...staggerContainer}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
+          {/* Category Filters */}
+          <motion.div
+            className="flex flex-wrap gap-3 mb-8"
+            {...staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
+            {categories.map((category, index) => (
+              <motion.button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  selectedCategory === category
+                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+                {...staggerItem}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                {milestones.map((category, idx) => (
-                  <motion.div 
-                    key={idx} 
-                    className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6"
+                {category}
+              </motion.button>
+            ))}
+          </motion.div>
+
+          {/* Milestones List */}
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading milestones...</p>
+            </div>
+          ) : (
+            <motion.div
+              className="space-y-4"
+              {...staggerContainer}
+              initial="initial"
+              animate="animate"
+            >
+              {filteredMilestones.map((milestone, index) => {
+                const Icon = categoryIcons[milestone.category] || Activity;
+                
+                return (
+                  <motion.div
+                    key={milestone.id}
+                    className={`bg-white rounded-xl shadow-md p-6 ${
+                      milestone.completed ? "border-l-4 border-green-500" : ""
+                    }`}
                     {...staggerItem}
+                    {...cardHover}
                   >
-                    {/* Category Header */}
-                    <motion.div 
-                      className={`${colorClasses[category.color]} border-b-2 p-6 flex items-center gap-4`}
-                      whileHover={{ scale: 1.01 }}
-                    >
-                      <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                        <category.icon className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <h4 className="text-2xl font-bold">{category.category} Development</h4>
-                        <p className="text-sm opacity-80 mt-1">
-                          {category.items.filter(i => i.status === 'completed').length} of {category.items.length} milestones achieved
-                        </p>
-                      </div>
-                    </motion.div>
+                    <div className="flex items-start gap-4">
+                      {/* Checkbox */}
+                      <button
+                        onClick={() => toggleMilestone(milestone.id)}
+                        className="flex-shrink-0 mt-1"
+                      >
+                        {milestone.completed ? (
+                          <CheckCircle className="w-6 h-6 text-green-500" />
+                        ) : (
+                          <Circle className="w-6 h-6 text-gray-400" />
+                        )}
+                      </button>
 
-                    {/* Milestone Items */}
-                    <div className="p-6 space-y-6">
-                      {category.items.map((item, itemIdx) => (
-                        <motion.div 
-                          key={itemIdx} 
-                          className="flex gap-6"
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: itemIdx * 0.1 }}
-                        >
-                          {/* Status Indicator */}
-                          <div className="flex flex-col items-center">
-                            <motion.div 
-                              className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                item.status === 'completed' ? 'bg-green-100' : 
-                                item.status === 'in-progress' ? 'bg-orange-100' : 'bg-gray-100'
-                              }`}
-                              whileHover={{ scale: 1.2, rotate: 360 }}
-                              transition={{ duration: 0.5 }}
-                            >
-                              {item.status === 'completed' && <CheckCircle className="w-6 h-6 text-green-600" />}
-                              {item.status === 'in-progress' && <Clock className="w-6 h-6 text-orange-600" />}
-                              {item.status === 'upcoming' && <Calendar className="w-6 h-6 text-gray-400" />}
-                            </motion.div>
-                            {itemIdx < category.items.length - 1 && (
-                              <div className="w-0.5 h-16 bg-gray-200 mt-2"></div>
-                            )}
-                          </div>
+                      {/* Category Icon */}
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+                        milestone.completed ? "bg-green-100" : "bg-blue-100"
+                      }`}>
+                        <Icon className={`w-6 h-6 ${
+                          milestone.completed ? "text-green-600" : "text-blue-600"
+                        }`} />
+                      </div>
 
-                          {/* Content */}
-                          <div className="flex-1 pb-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <h5 className="text-lg font-semibold text-gray-800">{item.name}</h5>
-                                <p className="text-sm text-gray-500 mt-1">{item.description}</p>
-                              </div>
-                              {item.status === 'completed' && (
-                                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium whitespace-nowrap">
-                                  {item.date}
-                                </span>
-                              )}
-                            </div>
-                            
-                            {item.status === 'in-progress' && (
-                              <motion.div 
-                                className="mt-3 bg-gray-50 rounded-lg p-4"
-                                initial={{ opacity: 0 }}
-                                whileInView={{ opacity: 1 }}
-                                viewport={{ once: true }}
-                              >
-                                <div className="flex justify-between text-sm mb-2">
-                                  <span className="text-gray-600 font-medium">Progress</span>
-                                  <span className="text-gray-800 font-bold">{item.progress}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-3">
-                                  <motion.div
-                                    className={`${progressColors[category.color]} h-3 rounded-full`}
-                                    initial={{ width: 0 }}
-                                    whileInView={{ width: `${item.progress}%` }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 1, ease: "easeOut" }}
-                                  />
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
+                      {/* Content */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className={`text-lg font-bold ${
+                            milestone.completed ? "text-gray-500 line-through" : "text-gray-900"
+                          }`}>
+                            {milestone.title}
+                          </h3>
+                          <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
+                            {milestone.category}
+                          </span>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-3">{milestone.description}</p>
+
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {milestone.completed
+                              ? `Completed: ${new Date(milestone.date).toLocaleDateString()}`
+                              : `Expected: ${milestone.expectedAge || "Track progress"}`
+                            }
+                          </span>
+                          {milestone.ageAtCompletion && (
+                            <span className="flex items-center gap-1">
+                              <Baby className="w-4 h-4" />
+                              Age: {milestone.ageAtCompletion}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
-                ))}
-              </motion.div>
-            </div>
+                );
+              })}
 
-            {/* Right Sidebar */}
-            <div className="space-y-6">
-              
-              {/* Vaccinations Card */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-6"
-                {...slideUp}
-                initial="initial"
-                animate="animate"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <Syringe className="w-6 h-6 text-purple-500" />
-                  <h4 className="text-lg font-bold text-gray-800">Vaccinations</h4>
-                </div>
-                <motion.div 
-                  className="space-y-3"
-                  {...staggerContainer}
-                  initial="initial"
-                  animate="animate"
+              {filteredMilestones.length === 0 && (
+                <motion.div
+                  className="text-center py-12 bg-white rounded-xl shadow-md"
+                  {...fadeIn}
                 >
-                  {vaccinations.map((vacc, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className={`p-4 rounded-xl border-2 ${
-                        vacc.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'
-                      }`}
-                      {...staggerItem}
-                      whileHover={{ scale: 1.05, x: 5 }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-gray-800 text-sm">{vacc.name}</p>
-                        {vacc.status === 'completed' && (
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-600">{vacc.date}</p>
-                      <span className={`text-xs font-medium ${
-                        vacc.status === 'completed' ? 'text-green-600' : 'text-orange-600'
-                      }`}>
-                        {vacc.status === 'completed' ? 'Completed' : 'Scheduled'}
-                      </span>
-                    </motion.div>
-                  ))}
+                  <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">No Milestones Yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    {selectedCategory === "All"
+                      ? "Start tracking your child's development milestones"
+                      : `No ${selectedCategory} milestones found`
+                    }
+                  </p>
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Your First Milestone
+                  </button>
                 </motion.div>
-                <motion.button 
-                  className="w-full mt-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-medium transition"
-                  {...hoverScale}
-                >
-                  Schedule Vaccination
-                </motion.button>
-              </motion.div>
-
-              {/* Growth Trend Card */}
-              <motion.div 
-                className="bg-gradient-to-br from-pink-500 to-purple-600 text-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.6 }}
-                whileHover={{ scale: 1.05 }}
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <TrendingUp className="w-6 h-6" />
-                  <h4 className="text-lg font-bold">Growth Trend</h4>
-                </div>
-                <p className="text-sm text-pink-100 mb-4">
-                  Aarav is growing well! Height and weight are tracking in the 70-75th percentile consistently.
-                </p>
-                <motion.button 
-                  className="w-full py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg font-medium transition"
-                  {...hoverScale}
-                >
-                  View Full Report
-                </motion.button>
-              </motion.div>
-
-              {/* Tip Card */}
-              <motion.div 
-                className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.8 }}
-                whileHover={{ scale: 1.05 }}
-              >
-                <h4 className="font-bold mb-2 text-lg">💡 Parenting Tip</h4>
-                <p className="text-sm text-blue-50 leading-relaxed">
-                  Take photos and videos at each milestone! These memories become precious as your child grows. 
-                  Use our photo journal feature to document special moments.
-                </p>
-              </motion.div>
-            </div>
-          </div>
+              )}
+            </motion.div>
+          )}
         </div>
       </div>
     </PageWrapper>
   );
 }
-
-export default Track;

@@ -1,317 +1,229 @@
-import { Link } from "react-router-dom";
+// src/pages/Dashboard.js
 import { motion } from "framer-motion";
-import { Calendar, TrendingUp, Stethoscope, MessageSquare, BookOpen, Bell, Heart, Activity, Users } from "lucide-react";
-import { staggerContainer, staggerItem, cardHover, slideUp, fadeIn, hoverScale } from "../utils/animations";
+import {
+  Activity,
+  TrendingUp,
+  Calendar,
+  Users,
+  Heart,
+  Stethoscope,
+  MessageCircle,
+  BookOpen,
+  Bell,
+  Award,
+  Clock,
+  ArrowRight
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
+import { staggerContainer, staggerItem, slideUp, fadeIn, cardHover, hoverScale } from "../utils/animations";
+import { useAuth } from "../context/AuthContext";
+import { getUserAvatar, getChildAvatar } from "../utils/avatarHelper";
 
-function Dashboard() {
-  const upcomingEvents = [
-    { id: 1, title: "Dr. Meera Patel - Pediatric Checkup", time: "Today, 4:00 PM", type: "doctor", color: "blue" },
-    { id: 2, title: "Varicella Vaccination Due", time: "Tomorrow, 11:00 AM", type: "health", color: "purple" },
-    { id: 3, title: "Parent Community Meetup", time: "Saturday, 10:00 AM", type: "community", color: "green" },
-    { id: 4, title: "Growth Measurement Reminder", time: "Next Monday", type: "reminder", color: "pink" }
-  ];
+export default function Dashboard() {
+  const { currentUser, userData } = useAuth();
 
-  const childProgress = [
-    { milestone: "Physical Development", progress: 85, color: "bg-pink-500", icon: Activity },
-    { milestone: "Cognitive Skills", progress: 68, color: "bg-blue-500", icon: TrendingUp },
-    { milestone: "Social & Emotional", progress: 75, color: "bg-green-500", icon: Heart }
-  ];
-
+  // Quick stats data
   const quickStats = [
-    { label: "Days Tracked", value: "127", icon: Calendar, color: "pink", gradient: "from-pink-500 to-rose-500" },
-    { label: "Milestones Hit", value: "8/12", icon: TrendingUp, color: "blue", gradient: "from-blue-500 to-cyan-500" },
-    { label: "Consultations", value: "3", icon: Stethoscope, color: "purple", gradient: "from-purple-500 to-indigo-500" },
-    { label: "Community Posts", value: "15", icon: Users, color: "green", gradient: "from-green-500 to-emerald-500" }
+    { label: "Days Tracked", value: userData?.stats?.daysTracked || 0, icon: Calendar, color: "text-pink-500", bgColor: "bg-pink-50" },
+    { label: "Milestones", value: `${userData?.stats?.milestonesCompleted || 0}/12`, icon: Award, color: "text-blue-500", bgColor: "bg-blue-50" },
+    { label: "Consultations", value: userData?.stats?.consultationsBooked || 0, icon: Stethoscope, color: "text-green-500", bgColor: "bg-green-50" },
+    { label: "Community Posts", value: userData?.stats?.postsCount || 0, icon: MessageCircle, color: "text-purple-500", bgColor: "bg-purple-50" }
   ];
 
-  const recentActivity = [
-    { action: "Updated milestone: First Steps", time: "2 days ago", icon: TrendingUp, color: "green" },
-    { action: "Joined discussion: Toddler Sleep Tips", time: "4 days ago", icon: MessageSquare, color: "blue" },
-    { action: "Read article: Nutrition Guide", time: "1 week ago", icon: BookOpen, color: "orange" }
+  // Progress data
+  const progressData = [
+    { skill: "Walking", progress: 85, color: "bg-pink-500" },
+    { skill: "Speaking", progress: 60, color: "bg-blue-500" },
+    { skill: "Social Skills", progress: 75, color: "bg-green-500" }
   ];
 
+  // Upcoming events
+  const upcomingEvents = [
+    { title: "Pediatrician Checkup", date: "Mar 15, 2025", time: "10:00 AM", type: "appointment" },
+    { title: "Vaccination Due", date: "Mar 20, 2025", time: "2:00 PM", type: "health" },
+    { title: "Milestone Review", date: "Mar 25, 2025", time: "11:00 AM", type: "milestone" }
+  ];
+
+  // Quick actions
   const quickActions = [
-    {
-      title: "Book Consultation",
-      description: "Schedule with pediatricians",
-      link: "/consult",
-      icon: Stethoscope,
-      gradient: "from-blue-500 to-blue-600",
-      hoverGradient: "hover:from-blue-600 hover:to-blue-700"
-    },
-    {
-      title: "Track Milestone",
-      description: "Update development progress",
-      link: "/track",
-      icon: TrendingUp,
-      gradient: "from-green-500 to-green-600",
-      hoverGradient: "hover:from-green-600 hover:to-green-700"
-    },
-    {
-      title: "Ask Community",
-      description: "Connect with other parents",
-      link: "/community",
-      icon: MessageSquare,
-      gradient: "from-purple-500 to-purple-600",
-      hoverGradient: "hover:from-purple-600 hover:to-purple-700"
-    },
-    {
-      title: "Learning Resources",
-      description: "Expert articles and guides",
-      link: "/learningresources",
-      icon: BookOpen,
-      gradient: "from-pink-500 to-pink-600",
-      hoverGradient: "hover:from-pink-600 hover:to-pink-700"
-    }
+    { label: "Book Consultation", icon: Stethoscope, link: "/consult", color: "from-pink-500 to-pink-600" },
+    { label: "Update Milestone", icon: Award, link: "/track", color: "from-blue-500 to-blue-600" },
+    { label: "Ask Community", icon: MessageCircle, link: "/community", color: "from-green-500 to-green-600" },
+    { label: "Learning Resources", icon: BookOpen, link: "/learningresources", color: "from-purple-500 to-purple-600" }
+  ];
+
+  // Recent activity
+  const recentActivity = [
+    { action: "Completed milestone: First Words", time: "2 hours ago", icon: Award },
+    { action: "Booked appointment with Dr. Sarah", time: "1 day ago", icon: Calendar },
+    { action: "Posted in Parent Community", time: "2 days ago", icon: MessageCircle }
   ];
 
   return (
     <PageWrapper>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
-        {/* Hero Header */}
-        <motion.div 
-          className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white py-12 px-6 md:px-12 lg:px-20"
+        {/* Header */}
+        <motion.div
+          className="bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 text-white py-12 px-6 lg:px-20"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
           <div className="max-w-7xl mx-auto">
-            <motion.h1 
-              className="text-4xl md:text-5xl font-bold mb-3"
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              transition={{ delay: 0.2 }}
             >
-              Welcome back, Neha! 👋
-            </motion.h1>
-            <motion.p 
-              className="text-lg text-white/90"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
-            >
-              Here's how Aarav is doing today
-            </motion.p>
+              <h1 className="text-4xl lg:text-5xl font-bold mb-2">
+                Welcome back, {userData?.fullName?.split(' ')[0] || currentUser?.displayName?.split(' ')[0] || 'Parent'}! 👋
+              </h1>
+              <p className="text-white/90 text-lg">Here's your parenting journey at a glance</p>
+            </motion.div>
           </div>
         </motion.div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 -mt-8">
-          
-          {/* Child Profile Card - Wide */}
-          <motion.div 
-            className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100"
+        <div className="max-w-7xl mx-auto px-6 lg:px-20 -mt-8">
+          {/* Child Profile Card */}
+          <motion.div
+            className="bg-white rounded-2xl shadow-lg p-6 mb-8"
             {...slideUp}
-            initial="initial"
-            animate="animate"
-            whileHover={{ y: -5, boxShadow: "0 25px 50px rgba(0,0,0,0.1)" }}
-            transition={{ duration: 0.3 }}
+            {...cardHover}
           >
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="flex items-center gap-6">
               <motion.img
-                src="https://ui-avatars.com/api/?name=Aarav+Sharma&background=f472b6&color=fff&size=100"
+                src={getChildAvatar({ name: "Emma Johnson" }, 80)}
                 alt="Child"
-                className="w-24 h-24 rounded-full border-4 border-pink-200 shadow-lg"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                transition={{ duration: 0.3 }}
+                className="w-20 h-20 rounded-full border-4 border-white shadow-md"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
               />
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Aarav Sharma</h2>
-                <p className="text-lg text-gray-600 mb-4">2 years 3 months old • Born: January 5, 2022</p>
-                <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                  <motion.span 
-                    className="px-4 py-2 bg-pink-100 text-pink-700 rounded-full text-sm font-medium"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Height: 92cm
-                  </motion.span>
-                  <motion.span 
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Weight: 13.5kg
-                  </motion.span>
-                  <motion.span 
-                    className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    8 Milestones ✓
-                  </motion.span>
-                </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900">Emma Johnson</h2>
+                <p className="text-gray-600">2 years 4 months old</p>
               </div>
-              <motion.div {...hoverScale}>
-                <Link
-                  to="/track"
-                  className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition shadow-lg"
+              <Link to="/track">
+                <motion.button
+                  className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg font-semibold"
+                  {...hoverScale}
                 >
-                  View Full Progress
-                </Link>
-              </motion.div>
+                  View Progress
+                </motion.button>
+              </Link>
             </div>
           </motion.div>
 
-          {/* Quick Stats - 4 Cards */}
-          <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          {/* Quick Stats Grid */}
+          <motion.div
+            className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             {...staggerContainer}
             initial="initial"
-            animate="animate"
+            whileInView="animate"
+            viewport={{ once: true }}
           >
             {quickStats.map((stat, index) => (
-              <motion.div 
-                key={index} 
-                className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
+              <motion.div
+                key={index}
+                className="bg-white rounded-xl shadow-md p-6"
                 {...staggerItem}
                 {...cardHover}
               >
-                <motion.div 
-                  className={`w-14 h-14 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center mb-4 shadow-md`}
-                  whileHover={{ rotate: 360, scale: 1.1 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <stat.icon className="w-7 h-7 text-white" />
-                </motion.div>
-                <motion.p 
-                  className="text-3xl font-bold text-gray-800 mb-1"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: index * 0.1 + 0.5, type: "spring" }}
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`p-3 ${stat.bgColor} rounded-lg`}>
+                    <motion.div whileHover={{ rotate: 360 }} transition={{ duration: 0.5 }}>
+                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                    </motion.div>
+                  </div>
+                </div>
+                <motion.div
+                  className="text-3xl font-bold text-gray-900 mb-1"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 + 0.3 }}
                 >
                   {stat.value}
-                </motion.p>
-                <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
+                </motion.div>
+                <div className="text-sm text-gray-600">{stat.label}</div>
               </motion.div>
             ))}
           </motion.div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            
-            {/* Left Column - Takes 2 columns on XL */}
-            <div className="xl:col-span-2 space-y-8">
-              
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Development Progress & Events */}
+            <div className="lg:col-span-2 space-y-8">
               {/* Development Progress */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
                 {...fadeIn}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
+                {...cardHover}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-800">Development Overview</h3>
-                  <Link to="/track" className="text-pink-500 hover:text-pink-600 font-medium text-sm">
-                    View Details →
+                  <h3 className="text-xl font-bold text-gray-900">Development Progress</h3>
+                  <Link to="/track" className="text-pink-500 hover:text-pink-600 font-medium flex items-center gap-1">
+                    View All <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
-                
-                <motion.div 
-                  className="space-y-6"
-                  {...staggerContainer}
-                  initial="initial"
-                  whileInView="animate"
-                  viewport={{ once: true }}
-                >
-                  {childProgress.map((item, index) => (
-                    <motion.div key={index} {...staggerItem}>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-10 h-10 ${item.color.replace('bg-', 'bg-').replace('-500', '-100')} rounded-lg flex items-center justify-center`}>
-                          <item.icon className={`w-5 h-5 ${item.color.replace('bg-', 'text-')}`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-base font-semibold text-gray-800">{item.milestone}</span>
-                            <span className="text-sm font-bold text-gray-600">{item.progress}%</span>
-                          </div>
-                        </div>
+
+                <div className="space-y-6">
+                  {progressData.map((item, index) => (
+                    <div key={index}>
+                      <div className="flex justify-between mb-2">
+                        <span className="font-medium text-gray-700">{item.skill}</span>
+                        <span className="text-gray-600">{item.progress}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                         <motion.div
-                          className={`${item.color} h-3 rounded-full shadow-sm`}
+                          className={`h-full ${item.color} rounded-full`}
                           initial={{ width: 0 }}
                           whileInView={{ width: `${item.progress}%` }}
                           viewport={{ once: true }}
-                          transition={{ delay: index * 0.2, duration: 1, ease: "easeOut" }}
+                          transition={{ duration: 1, delay: index * 0.2 }}
                         />
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </motion.div>
+                </div>
               </motion.div>
 
               {/* Upcoming Events */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
                 {...fadeIn}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
+                {...cardHover}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-6 h-6 text-gray-700" />
-                    <h3 className="text-2xl font-bold text-gray-800">Upcoming Events</h3>
-                  </div>
-                  <span className="px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-sm font-medium">
-                    {upcomingEvents.length} scheduled
-                  </span>
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <Calendar className="w-6 h-6 text-pink-500" />
+                    Upcoming Events
+                  </h3>
                 </div>
-                
-                <motion.div 
-                  className="space-y-4"
-                  {...staggerContainer}
-                  initial="initial"
-                  whileInView="animate"
-                  viewport={{ once: true }}
-                >
-                  {upcomingEvents.map((event) => (
-                    <motion.div
-                      key={event.id}
-                      className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100"
-                      {...staggerItem}
-                      whileHover={{ x: 5, boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <div className={`w-12 h-12 bg-${event.color}-100 rounded-xl flex items-center justify-center flex-shrink-0`}>
-                        <Calendar className={`w-6 h-6 text-${event.color}-600`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">{event.title}</p>
-                        <p className="text-sm text-gray-500 mt-1">{event.time}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
 
-              {/* Recent Activity */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
-                {...fadeIn}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
-              >
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">Recent Activity</h3>
-                <motion.div 
+                <motion.div
                   className="space-y-4"
                   {...staggerContainer}
                   initial="initial"
                   whileInView="animate"
                   viewport={{ once: true }}
                 >
-                  {recentActivity.map((activity, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className="flex items-center gap-4 pb-4 border-b last:border-0"
+                  {upcomingEvents.map((event, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                       {...staggerItem}
+                      whileHover={{ x: 10 }}
                     >
-                      <div className={`w-10 h-10 bg-${activity.color}-100 rounded-full flex items-center justify-center`}>
-                        <activity.icon className={`w-5 h-5 text-${activity.color}-600`} />
+                      <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-6 h-6 text-pink-500" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-gray-800 font-medium">{activity.action}</p>
-                        <p className="text-sm text-gray-500">{activity.time}</p>
+                        <h4 className="font-semibold text-gray-900">{event.title}</h4>
+                        <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                          <Clock className="w-4 h-4" />
+                          {event.date} at {event.time}
+                        </p>
                       </div>
                     </motion.div>
                   ))}
@@ -319,77 +231,86 @@ function Dashboard() {
               </motion.div>
             </div>
 
-            {/* Right Sidebar - Quick Actions & Tips */}
-            <div className="space-y-6">
-              
+            {/* Right Column - Quick Actions & Activity */}
+            <div className="space-y-8">
               {/* Quick Actions */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-                {...slideUp}
-                initial="initial"
-                animate="animate"
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
+                {...fadeIn}
+                {...cardHover}
               >
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
-                <motion.div 
-                  className="space-y-4"
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h3>
+
+                <motion.div
+                  className="space-y-3"
                   {...staggerContainer}
                   initial="initial"
-                  animate="animate"
+                  whileInView="animate"
+                  viewport={{ once: true }}
                 >
-                  {quickActions.map((action, idx) => (
-                    <motion.div key={idx} {...staggerItem} {...hoverScale}>
-                      <Link
-                        to={action.link}
-                        className={`block p-4 bg-gradient-to-r ${action.gradient} ${action.hoverGradient} text-white rounded-xl transition shadow-md hover:shadow-lg group`}
+                  {quickActions.map((action, index) => (
+                    <Link key={index} to={action.link}>
+                      <motion.button
+                        className={`w-full flex items-center gap-3 p-4 bg-gradient-to-r ${action.color} text-white rounded-lg font-semibold`}
+                        {...staggerItem}
+                        {...hoverScale}
                       >
-                        <div className="flex items-center gap-3 mb-2">
-                          <action.icon className="w-6 h-6" />
-                          <span className="font-semibold text-lg">{action.title}</span>
-                        </div>
-                        <p className="text-sm text-white/90">{action.description}</p>
-                      </Link>
-                    </motion.div>
+                        <action.icon className="w-5 h-5" />
+                        {action.label}
+                      </motion.button>
+                    </Link>
                   ))}
                 </motion.div>
               </motion.div>
 
-              {/* Health Tip */}
-              <motion.div 
-                className="bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 text-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
-                whileHover={{ scale: 1.05 }}
+              {/* Daily Tip */}
+              <motion.div
+                className="bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl shadow-md p-6 text-white"
+                {...fadeIn}
+                whileHover={{ scale: 1.02 }}
               >
-                <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
-                  💡 Daily Parenting Tip
-                </h4>
-                <p className="text-sm text-white/90 leading-relaxed">
-                  Encourage your toddler to drink water regularly throughout the day. 
-                  Proper hydration supports healthy development, better sleep, and improved mood. 
-                  Aim for 4-6 cups daily for ages 2-3.
+                <div className="flex items-center gap-2 mb-3">
+                  <Heart className="w-6 h-6" />
+                  <h3 className="text-lg font-bold">Daily Tip</h3>
+                </div>
+                <p className="text-white/90">
+                  Establish a consistent bedtime routine to help your child develop healthy sleep habits. This can include reading, bathing, and quiet time.
                 </p>
               </motion.div>
 
-              {/* Support Card */}
-              <motion.div 
-                className="bg-gradient-to-br from-green-500 to-teal-500 text-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1, duration: 0.6 }}
-                whileHover={{ scale: 1.05 }}
+              {/* Recent Activity */}
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
+                {...fadeIn}
+                {...cardHover}
               >
-                <h4 className="font-bold text-lg mb-3">Need Help? 🤝</h4>
-                <p className="text-sm text-white/90 mb-4">
-                  Our community and experts are here to support you on your parenting journey.
-                </p>
-                <motion.div {...hoverScale}>
-                  <Link
-                    to="/community"
-                    className="block w-full py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-center rounded-lg font-medium transition"
-                  >
-                    Join Community
-                  </Link>
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Activity className="w-6 h-6 text-pink-500" />
+                  Recent Activity
+                </h3>
+
+                <motion.div
+                  className="space-y-4"
+                  {...staggerContainer}
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true }}
+                >
+                  {recentActivity.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex items-start gap-3"
+                      {...staggerItem}
+                    >
+                      <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <item.icon className="w-4 h-4 text-pink-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-900">{item.action}</p>
+                        <p className="text-xs text-gray-500">{item.time}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </motion.div>
               </motion.div>
             </div>
@@ -399,5 +320,3 @@ function Dashboard() {
     </PageWrapper>
   );
 }
-
-export default Dashboard;

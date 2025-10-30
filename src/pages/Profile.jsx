@@ -1,113 +1,120 @@
-// ============================================
-// PROFILE.JS - FULLY ANIMATED
-// File: src/pages/Profile.js
-// ============================================
-
-import { User, Mail, Phone, MapPin, Calendar, Baby, Edit3, Settings, LogOut, Bell, Shield, HelpCircle, Camera } from "lucide-react";
+// src/pages/Profile.js
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { staggerContainer, staggerItem, slideUp, fadeIn, cardHover, hoverScale } from "../utils/animations";
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Settings,
+  Bell,
+  Shield,
+  HelpCircle,
+  LogOut,
+  Edit,
+  Camera,
+  Baby,
+  Award,
+  MessageCircle,
+  Stethoscope
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
+import { fadeIn, slideUp, cardHover, staggerContainer, staggerItem } from "../utils/animations";
+import { useAuth } from "../context/AuthContext";
+import { getUserAvatar, getChildAvatar } from "../utils/avatarHelper";
 
-function Profile() {
-  const user = {
-    name: "Neha Sharma",
-    email: "neha.sharma@example.com",
-    phone: "+91 98765 43210",
-    location: "Mumbai, Maharashtra",
-    memberSince: "January 2024",
-    avatar: "https://ui-avatars.com/api/?name=Neha+Sharma&background=ec4899&color=fff&size=150",
+export default function Profile() {
+  const { currentUser, userData, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
-  const children = [
-    {
-      name: "Aarav Sharma",
-      age: "2 years 3 months",
-      dob: "January 5, 2022",
-      gender: "Male",
-      avatar: "https://ui-avatars.com/api/?name=Aarav+Sharma&background=3b82f6&color=fff&size=100"
-    }
+  // User stats
+  const userStats = [
+    { label: "Posts", value: userData?.stats?.postsCount || 0, icon: MessageCircle, color: "text-pink-500" },
+    { label: "Milestones", value: userData?.stats?.milestonesCompleted || 0, icon: Award, color: "text-blue-500" },
+    { label: "Consultations", value: userData?.stats?.consultationsBooked || 0, icon: Stethoscope, color: "text-green-500" }
   ];
 
-  const stats = [
-    { label: "Posts", value: "15", color: "pink" },
-    { label: "Milestones", value: "8", color: "blue" },
-    { label: "Consultations", value: "3", color: "purple" },
-    { label: "Days Active", value: "127", color: "green" }
+  // Children list (mock data - will be from userData.children later)
+  const children = userData?.children || [
+    { id: 1, name: "Emma Johnson", age: "2 years 4 months", gender: "Female" }
   ];
 
-  const settingsSections = [
-    {
-      title: "Account Settings",
-      items: [
-        { icon: User, label: "Edit Profile", description: "Update your personal information", link: "#" },
-        { icon: Shield, label: "Privacy & Security", description: "Manage your privacy settings", link: "#" },
-        { icon: Bell, label: "Notifications", description: "Configure notification preferences", link: "#" }
-      ]
-    },
-    {
-      title: "Support & Help",
-      items: [
-        { icon: HelpCircle, label: "Help Center", description: "Browse FAQs and guides", link: "#" },
-        { icon: Mail, label: "Contact Support", description: "Get help from our team", link: "#" },
-        { icon: Settings, label: "App Settings", description: "Customize your experience", link: "#" }
-      ]
-    }
+  // Settings options
+  const settingsOptions = [
+    { label: "Account Settings", icon: Settings, link: "/settings/account" },
+    { label: "Notifications", icon: Bell, link: "/settings/notifications" },
+    { label: "Privacy & Security", icon: Shield, link: "/settings/privacy" },
+    { label: "Help & Support", icon: HelpCircle, link: "/settings/help" }
+  ];
+
+  // Quick links
+  const quickLinks = [
+    { label: "Dashboard", link: "/dashboard" },
+    { label: "Track Progress", link: "/track" },
+    { label: "Consultations", link: "/consult" },
+    { label: "Community", link: "/community" },
+    { label: "Resources", link: "/learningresources" }
   ];
 
   return (
     <PageWrapper>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
         {/* Header */}
-        <motion.div 
-          className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white py-12 px-6 md:px-12 lg:px-20"
+        <motion.div
+          className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white py-16 px-6 lg:px-20"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
           <div className="max-w-7xl mx-auto">
-            <motion.h1 
-              className="text-4xl md:text-5xl font-bold mb-3"
+            <motion.h1
+              className="text-4xl lg:text-5xl font-bold mb-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              transition={{ delay: 0.2 }}
             >
-              My Profile 👤
+              My Profile
             </motion.h1>
-            <motion.p 
-              className="text-lg text-white/90"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
+            <motion.p
+              className="text-white/90 text-lg"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
             >
               Manage your account and preferences
             </motion.p>
           </div>
         </motion.div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 -mt-8">
-          
-          {/* Profile Overview Card */}
-          <motion.div 
-            className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100"
+        <div className="max-w-7xl mx-auto px-6 lg:px-20 -mt-12">
+          {/* Profile Card */}
+          <motion.div
+            className="bg-white rounded-2xl shadow-xl p-8 mb-8"
             {...slideUp}
-            initial="initial"
-            animate="animate"
-            whileHover={{ y: -5 }}
+            {...cardHover}
           >
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
               {/* Avatar */}
               <div className="relative">
                 <motion.img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-32 h-32 rounded-full border-4 border-pink-200 shadow-lg"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  src={getUserAvatar(userData, 120)}
+                  alt={userData?.fullName || "User"}
+                  className="w-32 h-32 rounded-full border-4 border-white shadow-xl"
+                  whileHover={{ scale: 1.05, rotate: 5 }}
                   transition={{ duration: 0.3 }}
                 />
-                <motion.button 
-                  className="absolute bottom-0 right-0 w-10 h-10 bg-pink-500 hover:bg-pink-600 text-white rounded-full flex items-center justify-center shadow-lg transition"
-                  whileHover={{ scale: 1.2, rotate: 90 }}
+                <motion.button
+                  className="absolute bottom-0 right-0 w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white shadow-lg"
+                  whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                 >
                   <Camera className="w-5 h-5" />
@@ -116,239 +123,218 @@ function Profile() {
 
               {/* User Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">{user.name}</h2>
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                    <Mail className="w-4 h-4" />
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  {userData?.fullName || currentUser?.displayName || "User"}
+                </h2>
+                <p className="text-gray-600 flex items-center gap-2 justify-center md:justify-start mb-4">
+                  <Mail className="w-4 h-4" />
+                  {userData?.email || currentUser?.email}
+                </p>
+                {userData?.phone && (
+                  <p className="text-gray-600 flex items-center gap-2 justify-center md:justify-start mb-4">
                     <Phone className="w-4 h-4" />
-                    <span>{user.phone}</span>
-                  </div>
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                    <MapPin className="w-4 h-4" />
-                    <span>{user.location}</span>
-                  </div>
-                  <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>Member since {user.memberSince}</span>
-                  </div>
-                </div>
-                
-                {/* Stats */}
-                <motion.div 
-                  className="grid grid-cols-4 gap-4 mt-6"
-                  {...staggerContainer}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {stats.map((stat, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className="text-center"
-                      {...staggerItem}
-                    >
-                      <motion.p 
-                        className={`text-2xl font-bold text-${stat.color}-600`}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: idx * 0.1, type: "spring" }}
-                      >
-                        {stat.value}
-                      </motion.p>
-                      <p className="text-xs text-gray-500">{stat.label}</p>
-                    </motion.div>
-                  ))}
-                </motion.div>
+                    {userData.phone}
+                  </p>
+                )}
+                <p className="text-gray-500 text-sm flex items-center gap-2 justify-center md:justify-start">
+                  <Calendar className="w-4 h-4" />
+                  Member since {new Date(currentUser?.metadata?.creationTime).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </p>
               </div>
 
               {/* Edit Button */}
-              <motion.button 
-                className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition shadow-md flex items-center gap-2"
-                {...hoverScale}
+              <motion.button
+                className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg font-semibold flex items-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Edit3 className="w-5 h-5" />
+                <Edit className="w-5 h-5" />
                 Edit Profile
               </motion.button>
             </div>
+
+            {/* User Stats */}
+            <motion.div
+              className="grid grid-cols-3 gap-6 mt-8 pt-8 border-t"
+              {...staggerContainer}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true }}
+            >
+              {userStats.map((stat, index) => (
+                <motion.div
+                  key={index}
+                  className="text-center"
+                  {...staggerItem}
+                >
+                  <div className="flex justify-center mb-2">
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
+                  <div className="text-sm text-gray-600">{stat.label}</div>
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            
-            {/* Left Column */}
-            <div className="xl:col-span-2 space-y-8">
-              
-              {/* Children Section */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Children & Quick Links */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* My Children */}
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
                 {...fadeIn}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
+                {...cardHover}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Baby className="w-6 h-6 text-pink-500" />
-                    Children
+                    My Children
                   </h3>
-                  <motion.button 
-                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg font-medium transition text-sm"
-                    {...hoverScale}
+                  <motion.button
+                    className="px-4 py-2 bg-pink-500 text-white rounded-lg font-semibold text-sm"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     + Add Child
                   </motion.button>
                 </div>
 
-                <motion.div 
+                <motion.div
                   className="space-y-4"
                   {...staggerContainer}
                   initial="initial"
                   whileInView="animate"
                   viewport={{ once: true }}
                 >
-                  {children.map((child, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      className="flex items-center gap-6 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-100"
+                  {children.map((child, index) => (
+                    <motion.div
+                      key={child.id}
+                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                       {...staggerItem}
                       {...cardHover}
                     >
-                      <motion.img
-                        src={child.avatar}
+                      <img
+                        src={getChildAvatar(child, 60)}
                         alt={child.name}
-                        className="w-20 h-20 rounded-full border-4 border-white shadow-md"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        className="w-16 h-16 rounded-full border-2 border-pink-500"
                       />
                       <div className="flex-1">
-                        <h4 className="text-xl font-bold text-gray-800 mb-1">{child.name}</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                          <div><span className="font-medium">Age:</span> {child.age}</div>
-                          <div><span className="font-medium">DOB:</span> {child.dob}</div>
-                          <div><span className="font-medium">Gender:</span> {child.gender}</div>
-                        </div>
+                        <h4 className="font-semibold text-gray-900">{child.name}</h4>
+                        <p className="text-sm text-gray-600">{child.age} • {child.gender}</p>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <motion.button 
-                          className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-lg font-medium transition text-sm"
-                          {...hoverScale}
+                      <Link to="/track">
+                        <motion.button
+                          className="px-4 py-2 bg-white border border-gray-300 rounded-lg font-medium text-sm hover:bg-gray-50"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          Edit
+                          View Progress
                         </motion.button>
-                        <motion.div {...hoverScale}>
-                          <Link
-                            to="/track"
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition text-sm text-center block"
-                          >
-                            Track
-                          </Link>
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
-
-              {/* Settings Sections */}
-              {settingsSections.map((section, idx) => (
-                <motion.div 
-                  key={idx} 
-                  className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.2 }}
-                >
-                  <h3 className="text-2xl font-bold text-gray-800 mb-6">{section.title}</h3>
-                  <motion.div 
-                    className="space-y-4"
-                    {...staggerContainer}
-                    initial="initial"
-                    whileInView="animate"
-                    viewport={{ once: true }}
-                  >
-                    {section.items.map((item, itemIdx) => (
-                      <motion.a
-                        key={itemIdx}
-                        href={item.link}
-                        className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition group"
-                        {...staggerItem}
-                        whileHover={{ x: 5 }}
-                      >
-                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition">
-                          <item.icon className="w-6 h-6 text-gray-600 group-hover:text-pink-500 transition" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-800 group-hover:text-pink-600 transition">{item.label}</p>
-                          <p className="text-sm text-gray-500">{item.description}</p>
-                        </div>
-                        <span className="text-gray-400 group-hover:text-pink-500 transition">→</span>
-                      </motion.a>
-                    ))}
-                  </motion.div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="space-y-6">
-              
-              {/* Quick Links */}
-              <motion.div 
-                className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-                {...slideUp}
-                initial="initial"
-                animate="animate"
-              >
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Links</h3>
-                <motion.div 
-                  className="space-y-3"
-                  {...staggerContainer}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {[
-                    { to: "/dashboard", label: "Dashboard", color: "pink" },
-                    { to: "/track", label: "Track Progress", color: "blue" },
-                    { to: "/consult", label: "Consultations", color: "purple" },
-                    { to: "/community", label: "Community", color: "green" }
-                  ].map((link, idx) => (
-                    <motion.div key={idx} {...staggerItem}>
-                      <Link
-                        to={link.to}
-                        className={`block p-3 bg-${link.color}-50 hover:bg-${link.color}-100 rounded-lg text-${link.color}-700 font-medium transition`}
-                      >
-                        {link.label}
                       </Link>
                     </motion.div>
                   ))}
                 </motion.div>
               </motion.div>
 
-              {/* Premium Card */}
-              <motion.div 
-                className="bg-gradient-to-br from-blue-500 to-purple-500 text-white rounded-2xl shadow-lg p-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.6 }}
-                whileHover={{ scale: 1.05 }}
+              {/* Account Settings */}
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
+                {...fadeIn}
+                {...cardHover}
               >
-                <h4 className="font-bold text-lg mb-3">Premium Features</h4>
-                <p className="text-sm text-white/90 mb-4">
-                  Upgrade to unlock unlimited consultations, AI insights, and exclusive content.
-                </p>
-                <motion.button 
-                  className="w-full py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg font-medium transition"
-                  {...hoverScale}
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Settings & Preferences</h3>
+
+                <motion.div
+                  className="space-y-3"
+                  {...staggerContainer}
+                  initial="initial"
+                  whileInView="animate"
+                  viewport={{ once: true }}
                 >
-                  Upgrade Now
-                </motion.button>
+                  {settingsOptions.map((option, index) => (
+                    <motion.button
+                      key={index}
+                      className="w-full flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                      {...staggerItem}
+                      whileHover={{ x: 5 }}
+                    >
+                      <option.icon className="w-5 h-5 text-gray-600" />
+                      <span className="font-medium text-gray-900">{option.label}</span>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Right Column - Quick Links & Logout */}
+            <div className="space-y-8">
+              {/* Quick Links */}
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
+                {...fadeIn}
+                {...cardHover}
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Links</h3>
+
+                <div className="space-y-2">
+                  {quickLinks.map((link, index) => (
+                    <Link key={index} to={link.link}>
+                      <motion.div
+                        className="px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                        whileHover={{ x: 5 }}
+                      >
+                        {link.label}
+                      </motion.div>
+                    </Link>
+                  ))}
+                </div>
               </motion.div>
 
-              {/* Logout */}
-              <motion.button 
-                className="w-full flex items-center justify-center gap-2 py-3 bg-white hover:bg-red-50 text-red-600 border-2 border-red-200 rounded-xl font-semibold transition shadow-sm"
+              {/* Notifications Settings */}
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-6"
+                {...fadeIn}
+                {...cardHover}
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-pink-500" />
+                  Notifications
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Email Updates</span>
+                    <input
+                      type="checkbox"
+                      defaultChecked={userData?.settings?.emailUpdates}
+                      className="w-5 h-5 text-pink-500 rounded focus:ring-pink-500"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Push Notifications</span>
+                    <input
+                      type="checkbox"
+                      defaultChecked={userData?.settings?.notifications}
+                      className="w-5 h-5 text-pink-500 rounded focus:ring-pink-500"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Milestone Reminders</span>
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="w-5 h-5 text-pink-500 rounded focus:ring-pink-500"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Logout Button */}
+              <motion.button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-3 p-4 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -362,12 +348,3 @@ function Profile() {
     </PageWrapper>
   );
 }
-
-export default Profile;
-
-
-// ============================================
-// LEARNINGRESOURCES.JS - FULLY ANIMATED
-// File: src/pages/LearningResources.js
-// ============================================
-

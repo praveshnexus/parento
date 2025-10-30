@@ -1,0 +1,113 @@
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import "./App.css";
+
+// Layout Components
+import Layout from "./components/Layout";
+
+
+
+
+
+// Pages
+import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Track from "./pages/Track";
+import Consult from "./pages/Consult";
+import Community from "./pages/Comunity";
+import Profile from "./pages/Profile";
+import LearningResources from "./pages/LearningResources";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
+// Optional: Onboarding pages (if you have them)
+// import Onboarding1 from "./pages/Onboarding1";
+// import Onboarding2 from "./pages/Onboarding2";
+// import Onboarding3 from "./pages/Onboarding3";
+
+function App() {
+  return (
+   
+      <Router>
+        <AnimatePresence mode="wait">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Layout><Home /></Layout>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
+            {/* Protected Routes - With Layout */}
+            <Route
+              path="/dashboard"
+              element={
+                
+                    <Dashboard />
+                 
+              }
+            />
+            <Route
+              path="/track"
+              element={
+                
+                    <Track />
+                 
+              }
+            />
+            <Route
+              path="/consult"
+              element={
+                
+                    <Consult />
+                  
+              }
+            />
+            <Route
+              path="/community"
+              element={
+                
+                    <Community />
+                 
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                
+                    <Profile />
+                  
+              }
+            />
+            <Route
+              path="/learningresources"
+              element={
+                
+                    <LearningResources />
+                  
+              }
+            />
+
+            {/* 404 - Page Not Found */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
+                  <div className="text-center">
+                    <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
+                    <p className="text-xl text-gray-600 mb-8">Page not found</p>
+                    <a
+                      href="/"
+                      className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                    >
+                      Go Home
+                    </a>
+                  </div>
+                </div>
+              }
+            />
+          </Routes>
+        </AnimatePresence>
+      </Router>
+  );
+}
+
+export default App;

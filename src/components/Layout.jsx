@@ -1,18 +1,26 @@
+// src/components/Layout.js
 import TopNav from "./TopNav";
 import BottomNav from "./BottomNav";
 import Footer from "./Footer";
 
-function Layout({ children }) {
+export default function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen flex flex-col">
+      {/* TopNav - Always visible on desktop */}
       <TopNav />
-      <main className="flex-1 pt-20">{children}</main>
+
+      {/* Main Content */}
+      <main className="flex-1">
+        {children}
+      </main>
+
+      {/* Footer - Only on desktop */}
       <div className="hidden md:block">
         <Footer />
       </div>
+
+      {/* BottomNav - Only visible on mobile when logged in */}
       <BottomNav />
     </div>
   );
 }
-
-export default Layout;

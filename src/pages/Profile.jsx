@@ -123,7 +123,7 @@ export default function Profile() {
 
               {/* User Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl font-bold text-gray-700 mb-2">
                   {userData?.fullName || currentUser?.displayName || "User"}
                 </h2>
                 <p className="text-gray-600 flex items-center gap-2 justify-center md:justify-start mb-4">
@@ -170,7 +170,7 @@ export default function Profile() {
                   <div className="flex justify-center mb-2">
                     <stat.icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
-                  <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
+                  <div className="text-3xl font-bold text-gray-800">{stat.value}</div>
                   <div className="text-sm text-gray-600">{stat.label}</div>
                 </motion.div>
               ))}
@@ -188,7 +188,7 @@ export default function Profile() {
                 {...cardHover}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                     <Baby className="w-6 h-6 text-pink-500" />
                     My Children
                   </h3>
@@ -221,7 +221,7 @@ export default function Profile() {
                         className="w-16 h-16 rounded-full border-2 border-pink-500"
                       />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{child.name}</h4>
+                        <h4 className="font-semibold text-gray-800">{child.name}</h4>
                         <p className="text-sm text-gray-600">{child.age} • {child.gender}</p>
                       </div>
                       <Link to="/track">
@@ -244,7 +244,7 @@ export default function Profile() {
                 {...fadeIn}
                 {...cardHover}
               >
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Settings & Preferences</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Settings & Preferences</h3>
 
                 <motion.div
                   className="space-y-3"
@@ -261,7 +261,7 @@ export default function Profile() {
                       whileHover={{ x: 5 }}
                     >
                       <option.icon className="w-5 h-5 text-gray-600" />
-                      <span className="font-medium text-gray-900">{option.label}</span>
+                      <span className="font-medium text-gray-800">{option.label}</span>
                     </motion.button>
                   ))}
                 </motion.div>
@@ -276,7 +276,7 @@ export default function Profile() {
                 {...fadeIn}
                 {...cardHover}
               >
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Links</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Links</h3>
 
                 <div className="space-y-2">
                   {quickLinks.map((link, index) => (

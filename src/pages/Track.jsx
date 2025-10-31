@@ -15,14 +15,30 @@ import {
   CheckCircle,
   Circle,
   Edit,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import PageWrapper from "../components/PageWrapper";
-import { fadeIn, slideUp, cardHover, staggerContainer, staggerItem } from "../utils/animations";
+import {
+  fadeIn,
+  slideUp,
+  cardHover,
+  staggerContainer,
+  staggerItem,
+} from "../utils/animations";
 import { useAuth } from "../context/AuthContext";
 import { getChildAvatar } from "../utils/avatarHelper";
 import { db } from "../firebase/firebase";
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  orderBy,
+} from "firebase/firestore";
 
 export default function Track() {
   const { currentUser, userData } = useAuth();
@@ -38,7 +54,7 @@ export default function Track() {
   const child = userData?.children?.[0] || {
     name: "Emma Johnson",
     age: "2 years 4 months",
-    gender: "Female"
+    gender: "Female",
   };
 
   // Load milestones from Firestore
@@ -58,17 +74,17 @@ export default function Track() {
       );
 
       const querySnapshot = await getDocs(q);
-      const milestonesData = querySnapshot.docs.map(doc => ({
+      const milestonesData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
 
       setMilestones(milestonesData);
     } catch (error) {
       console.error("Error loading milestones:", error);
-      
+
       // If no milestones exist, show sample data
-      if (error.code === 'permission-denied' || milestones.length === 0) {
+      if (error.code === "permission-denied" || milestones.length === 0) {
         setMilestones(getSampleMilestones());
       }
     } finally {
@@ -85,7 +101,7 @@ export default function Track() {
       description: "Took first steps independently",
       completed: true,
       date: "2024-10-15",
-      ageAtCompletion: "12 months"
+      ageAtCompletion: "12 months",
     },
     {
       id: "2",
@@ -94,7 +110,7 @@ export default function Track() {
       description: "Said 'mama' and 'dada' clearly",
       completed: true,
       date: "2024-09-20",
-      ageAtCompletion: "11 months"
+      ageAtCompletion: "11 months",
     },
     {
       id: "3",
@@ -103,7 +119,7 @@ export default function Track() {
       description: "Waves when saying goodbye",
       completed: true,
       date: "2024-08-10",
-      ageAtCompletion: "10 months"
+      ageAtCompletion: "10 months",
     },
     {
       id: "4",
@@ -111,7 +127,7 @@ export default function Track() {
       title: "Runs Confidently",
       description: "Can run without falling frequently",
       completed: false,
-      expectedAge: "24 months"
+      expectedAge: "24 months",
     },
     {
       id: "5",
@@ -119,21 +135,25 @@ export default function Track() {
       title: "Names Colors",
       description: "Can identify and name basic colors",
       completed: false,
-      expectedAge: "30 months"
-    }
+      expectedAge: "30 months",
+    },
   ];
 
   // Toggle milestone completion
   const toggleMilestone = async (milestoneId) => {
     try {
-      const milestone = milestones.find(m => m.id === milestoneId);
-      
+      const milestone = milestones.find((m) => m.id === milestoneId);
+
       if (!milestone.userId) {
         // Sample data - just update state
-        setMilestones(prev =>
-          prev.map(m =>
+        setMilestones((prev) =>
+          prev.map((m) =>
             m.id === milestoneId
-              ? { ...m, completed: !m.completed, date: !m.completed ? new Date().toISOString() : null }
+              ? {
+                  ...m,
+                  completed: !m.completed,
+                  date: !m.completed ? new Date().toISOString() : null,
+                }
               : m
           )
         );
@@ -144,14 +164,18 @@ export default function Track() {
       const milestoneRef = doc(db, "milestones", milestoneId);
       await updateDoc(milestoneRef, {
         completed: !milestone.completed,
-        date: !milestone.completed ? new Date().toISOString() : null
+        date: !milestone.completed ? new Date().toISOString() : null,
       });
 
       // Update local state
-      setMilestones(prev =>
-        prev.map(m =>
+      setMilestones((prev) =>
+        prev.map((m) =>
           m.id === milestoneId
-            ? { ...m, completed: !m.completed, date: !m.completed ? new Date().toISOString() : null }
+            ? {
+                ...m,
+                completed: !m.completed,
+                date: !m.completed ? new Date().toISOString() : null,
+              }
             : m
         )
       );
@@ -167,15 +191,18 @@ export default function Track() {
         ...newMilestone,
         userId: currentUser.uid,
         createdAt: new Date().toISOString(),
-        completed: false
+        completed: false,
       };
 
       const docRef = await addDoc(collection(db, "milestones"), milestoneData);
-      
-      setMilestones(prev => [{
-        id: docRef.id,
-        ...milestoneData
-      }, ...prev]);
+
+      setMilestones((prev) => [
+        {
+          id: docRef.id,
+          ...milestoneData,
+        },
+        ...prev,
+      ]);
 
       setShowAddModal(false);
     } catch (error) {
@@ -184,21 +211,23 @@ export default function Track() {
   };
 
   // Filter milestones by category
-  const filteredMilestones = selectedCategory === "All"
-    ? milestones
-    : milestones.filter(m => m.category === selectedCategory);
+  const filteredMilestones =
+    selectedCategory === "All"
+      ? milestones
+      : milestones.filter((m) => m.category === selectedCategory);
 
-  const completedCount = milestones.filter(m => m.completed).length;
-  const completionPercentage = milestones.length > 0 
-    ? Math.round((completedCount / milestones.length) * 100)
-    : 0;
+  const completedCount = milestones.filter((m) => m.completed).length;
+  const completionPercentage =
+    milestones.length > 0
+      ? Math.round((completedCount / milestones.length) * 100)
+      : 0;
 
   // Category icons
   const categoryIcons = {
     Physical: Activity,
     Cognitive: Brain,
     Social: Smile,
-    Emotional: Heart
+    Emotional: Heart,
   };
 
   return (
@@ -248,14 +277,20 @@ export default function Track() {
 
               {/* Child Info */}
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">{child.name}</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  {child.name}
+                </h2>
                 <p className="text-gray-600 text-lg mb-4">{child.age}</p>
-                
+
                 {/* Progress Bar */}
                 <div className="mb-2">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-                    <span className="text-sm font-bold text-blue-600">{completionPercentage}%</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Overall Progress
+                    </span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {completionPercentage}%
+                    </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <motion.div
@@ -325,7 +360,7 @@ export default function Track() {
             >
               {filteredMilestones.map((milestone, index) => {
                 const Icon = categoryIcons[milestone.category] || Activity;
-                
+
                 return (
                   <motion.div
                     key={milestone.id}
@@ -349,36 +384,51 @@ export default function Track() {
                       </button>
 
                       {/* Category Icon */}
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
-                        milestone.completed ? "bg-green-100" : "bg-blue-100"
-                      }`}>
-                        <Icon className={`w-6 h-6 ${
-                          milestone.completed ? "text-green-600" : "text-blue-600"
-                        }`} />
+                      <div
+                        className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+                          milestone.completed ? "bg-green-100" : "bg-blue-100"
+                        }`}
+                      >
+                        <Icon
+                          className={`w-6 h-6 ${
+                            milestone.completed
+                              ? "text-green-600"
+                              : "text-blue-600"
+                          }`}
+                        />
                       </div>
 
                       {/* Content */}
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className={`text-lg font-bold ${
-                            milestone.completed ? "text-gray-500 line-through" : "text-gray-900"
-                          }`}>
+                          <h3
+                            className={`text-lg font-bold ${
+                              milestone.completed
+                                ? "text-gray-500 line-through"
+                                : "text-gray-700"
+                            }`}
+                          >
                             {milestone.title}
                           </h3>
                           <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
                             {milestone.category}
                           </span>
                         </div>
-                        
-                        <p className="text-gray-600 mb-3">{milestone.description}</p>
+
+                        <p className="text-gray-600 mb-3">
+                          {milestone.description}
+                        </p>
 
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {milestone.completed
-                              ? `Completed: ${new Date(milestone.date).toLocaleDateString()}`
-                              : `Expected: ${milestone.expectedAge || "Track progress"}`
-                            }
+                              ? `Completed: ${new Date(
+                                  milestone.date
+                                ).toLocaleDateString()}`
+                              : `Expected: ${
+                                  milestone.expectedAge || "Track progress"
+                                }`}
                           </span>
                           {milestone.ageAtCompletion && (
                             <span className="flex items-center gap-1">
@@ -399,12 +449,13 @@ export default function Track() {
                   {...fadeIn}
                 >
                   <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">No Milestones Yet</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    No Milestones Yet
+                  </h3>
                   <p className="text-gray-600 mb-4">
                     {selectedCategory === "All"
                       ? "Start tracking your child's development milestones"
-                      : `No ${selectedCategory} milestones found`
-                    }
+                      : `No ${selectedCategory} milestones found`}
                   </p>
                   <button
                     onClick={() => setShowAddModal(true)}

@@ -1,38 +1,35 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+// src/App.js
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import "./App.css";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-// Layout Components
+// Layout
 import Layout from "./components/Layout";
-
-
-
-
 
 // Pages
 import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Track from "./pages/Track";
 import Consult from "./pages/Consult";
 import Community from "./pages/Comunity";
 import Profile from "./pages/Profile";
 import LearningResources from "./pages/LearningResources";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-
-// Optional: Onboarding pages (if you have them)
-// import Onboarding1 from "./pages/Onboarding1";
-// import Onboarding2 from "./pages/Onboarding2";
-// import Onboarding3 from "./pages/Onboarding3";
 
 function App() {
   return (
-   
+    <AuthProvider>
       <Router>
         <AnimatePresence mode="wait">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Layout><Home /></Layout>} />
+            <Route path="/about" element={<Layout><About /></Layout>} />
+            <Route path="/contact" element={<Layout><Contact /></Layout>} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
 
@@ -40,49 +37,61 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <Dashboard />
-                 
+                  </Layout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/track"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <Track />
-                 
+                  </Layout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/consult"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <Consult />
-                  
+                  </Layout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/community"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <Community />
-                 
+                  </Layout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/profile"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <Profile />
-                  
+                  </Layout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/learningresources"
               element={
-                
+                <ProtectedRoute>
+                  <Layout>
                     <LearningResources />
-                  
+                  </Layout>
+                </ProtectedRoute>
               }
             />
 
@@ -107,6 +116,7 @@ function App() {
           </Routes>
         </AnimatePresence>
       </Router>
+    </AuthProvider>
   );
 }
 

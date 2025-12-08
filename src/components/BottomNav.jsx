@@ -6,7 +6,10 @@ import {
   Stethoscope,
   MessageSquare,
   GraduationCap,
-  User
+  User,
+  Info,
+  Mail,
+  Home
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -14,10 +17,26 @@ export default function BottomNav() {
   const location = useLocation();
   const { currentUser } = useAuth();
 
-  // Don't show bottom nav if not logged in
-  if (!currentUser) return null;
+  // Navigation items based on login status
+  const publicNavItems = [
+    {
+      name: "Home",
+      path: "/",
+      icon: Home
+    },
+    {
+      name: "About",
+      path: "/about",
+      icon: Info
+    },
+    {
+      name: "Contact",
+      path: "/contact",
+      icon: Mail
+    }
+  ];
 
-  const navItems = [
+  const authenticatedNavItems = [
     {
       name: "Dashboard",
       path: "/dashboard",
@@ -44,15 +63,31 @@ export default function BottomNav() {
       icon: GraduationCap
     },
     {
+      name: "About",
+      path: "/about",
+      icon: Info
+    },
+    {
+      name: "Contact",
+      path: "/contact",
+      icon: Mail
+    },
+    {
       name: "Profile",
       path: "/profile",
       icon: User
     }
   ];
 
+  // Choose nav items based on login status
+  const navItems = currentUser ? authenticatedNavItems : publicNavItems;
+
+  // Calculate grid columns based on number of items
+  const gridCols = navItems.length <= 4 ? 'grid-cols-3' : navItems.length <= 6 ? 'grid-cols-4' : 'grid-cols-4';
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="grid grid-cols-6 gap-1">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-safe">
+      <div className={`grid ${gridCols} gap-1 px-2 py-2`}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -61,10 +96,10 @@ export default function BottomNav() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center py-2 px-1 transition-all ${
+              className={`flex flex-col items-center justify-center py-2 px-1 transition-all rounded-lg ${
                 isActive
-                  ? "text-pink-500"
-                  : "text-gray-600 hover:text-pink-400"
+                  ? "text-pink-500 bg-pink-50"
+                  : "text-gray-600 hover:text-pink-400 hover:bg-gray-50"
               }`}
             >
               <Icon 
@@ -74,9 +109,6 @@ export default function BottomNav() {
               <span className={`text-xs ${isActive ? "font-semibold" : "font-medium"}`}>
                 {item.name}
               </span>
-              {isActive && (
-                <div className="absolute bottom-0 w-10 h-1 bg-pink-500 rounded-t-full"></div>
-              )}
             </Link>
           );
         })}

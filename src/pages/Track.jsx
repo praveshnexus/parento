@@ -1,21 +1,19 @@
-// src/pages/Track.js
+// src/pages/Track.jsx - FULLY FUNCTIONAL VERSION
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Baby,
-  TrendingUp,
   Calendar,
   Award,
   Plus,
-  ChevronRight,
   Activity,
-  Heart,
   Brain,
   Smile,
+  Heart,
   CheckCircle,
   Circle,
-  Edit,
-  Trash2,
+  X,
+  Loader
 } from "lucide-react";
 import PageWrapper from "../components/PageWrapper";
 import {
@@ -38,6 +36,7 @@ import {
   deleteDoc,
   doc,
   orderBy,
+  serverTimestamp,
 } from "firebase/firestore";
 
 export default function Track() {
@@ -46,6 +45,15 @@ export default function Track() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // New milestone form state
+  const [newMilestone, setNewMilestone] = useState({
+    category: "Physical",
+    title: "",
+    description: "",
+    expectedAge: "",
+  });
 
   // Milestone categories
   const categories = ["All", "Physical", "Cognitive", "Social", "Emotional"];
@@ -59,7 +67,9 @@ export default function Track() {
 
   // Load milestones from Firestore
   useEffect(() => {
-    loadMilestones();
+    if (currentUser) {
+      loadMilestones();
+    }
   }, [currentUser]);
 
   const loadMilestones = async () => {
@@ -81,90 +91,25 @@ export default function Track() {
 
       setMilestones(milestonesData);
     } catch (error) {
-      console.error("Error loading milestones:", error);
-
-      // If no milestones exist, show sample data
-      if (error.code === "permission-denied" || milestones.length === 0) {
-        setMilestones(getSampleMilestones());
-      }
+      // If no milestones or permission error, start with empty array
+      setMilestones([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Sample milestones for demo
-  const getSampleMilestones = () => [
-    {
-      id: "1",
-      category: "Physical",
-      title: "First Steps",
-      description: "Took first steps independently",
-      completed: true,
-      date: "2024-10-15",
-      ageAtCompletion: "12 months",
-    },
-    {
-      id: "2",
-      category: "Cognitive",
-      title: "Says First Words",
-      description: "Said 'mama' and 'dada' clearly",
-      completed: true,
-      date: "2024-09-20",
-      ageAtCompletion: "11 months",
-    },
-    {
-      id: "3",
-      category: "Social",
-      title: "Waves Bye-Bye",
-      description: "Waves when saying goodbye",
-      completed: true,
-      date: "2024-08-10",
-      ageAtCompletion: "10 months",
-    },
-    {
-      id: "4",
-      category: "Physical",
-      title: "Runs Confidently",
-      description: "Can run without falling frequently",
-      completed: false,
-      expectedAge: "24 months",
-    },
-    {
-      id: "5",
-      category: "Cognitive",
-      title: "Names Colors",
-      description: "Can identify and name basic colors",
-      completed: false,
-      expectedAge: "30 months",
-    },
-  ];
-
   // Toggle milestone completion
   const toggleMilestone = async (milestoneId) => {
     try {
       const milestone = milestones.find((m) => m.id === milestoneId);
+      const newCompletedState = !milestone.completed;
 
-      if (!milestone.userId) {
-        // Sample data - just update state
-        setMilestones((prev) =>
-          prev.map((m) =>
-            m.id === milestoneId
-              ? {
-                  ...m,
-                  completed: !m.completed,
-                  date: !m.completed ? new Date().toISOString() : null,
-                }
-              : m
-          )
-        );
-        return;
-      }
-
-      // Real data - update Firestore
+      // Update Firestore
       const milestoneRef = doc(db, "milestones", milestoneId);
       await updateDoc(milestoneRef, {
-        completed: !milestone.completed,
-        date: !milestone.completed ? new Date().toISOString() : null,
+        completed: newCompletedState,
+        completedAt: newCompletedState ? serverTimestamp() : null,
+        ageAtCompletion: newCompletedState ? child.age : null,
       });
 
       // Update local state
@@ -173,40 +118,66 @@ export default function Track() {
           m.id === milestoneId
             ? {
                 ...m,
-                completed: !m.completed,
-                date: !m.completed ? new Date().toISOString() : null,
+                completed: newCompletedState,
+                completedAt: newCompletedState ? new Date().toISOString() : null,
+                ageAtCompletion: newCompletedState ? child.age : null,
               }
             : m
         )
       );
     } catch (error) {
-      console.error("Error toggling milestone:", error);
+      alert("Failed to update milestone. Please try again.");
     }
   };
 
   // Add new milestone
-  const addMilestone = async (newMilestone) => {
+  const handleAddMilestone = async (e) => {
+    e.preventDefault();
+
+    if (!newMilestone.title.trim()) {
+      alert("Please enter a milestone title");
+      return;
+    }
+
     try {
+      setSaving(true);
+
       const milestoneData = {
-        ...newMilestone,
         userId: currentUser.uid,
-        createdAt: new Date().toISOString(),
+        category: newMilestone.category,
+        title: newMilestone.title.trim(),
+        description: newMilestone.description.trim(),
+        expectedAge: newMilestone.expectedAge.trim(),
         completed: false,
+        completedAt: null,
+        ageAtCompletion: null,
+        createdAt: serverTimestamp(),
       };
 
       const docRef = await addDoc(collection(db, "milestones"), milestoneData);
 
+      // Add to local state
       setMilestones((prev) => [
         {
           id: docRef.id,
           ...milestoneData,
+          createdAt: new Date().toISOString(),
         },
         ...prev,
       ]);
 
+      // Reset form and close modal
+      setNewMilestone({
+        category: "Physical",
+        title: "",
+        description: "",
+        expectedAge: "",
+      });
       setShowAddModal(false);
     } catch (error) {
-      console.error("Error adding milestone:", error);
+      alert("Failed to add milestone. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -268,14 +239,12 @@ export default function Track() {
             {...cardHover}
           >
             <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Child Avatar */}
               <img
                 src={getChildAvatar(child, 100)}
                 alt={child.name}
                 className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
               />
 
-              {/* Child Info */}
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
                   {child.name}
@@ -327,7 +296,7 @@ export default function Track() {
             initial="initial"
             animate="animate"
           >
-            {categories.map((category, index) => (
+            {categories.map((category) => (
               <motion.button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
@@ -348,8 +317,8 @@ export default function Track() {
           {/* Milestones List */}
           {loading ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading milestones...</p>
+              <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600">Loading milestones...</p>
             </div>
           ) : (
             <motion.div
@@ -358,7 +327,7 @@ export default function Track() {
               initial="initial"
               animate="animate"
             >
-              {filteredMilestones.map((milestone, index) => {
+              {filteredMilestones.map((milestone) => {
                 const Icon = categoryIcons[milestone.category] || Activity;
 
                 return (
@@ -405,7 +374,7 @@ export default function Track() {
                             className={`text-lg font-bold ${
                               milestone.completed
                                 ? "text-gray-500 line-through"
-                                : "text-gray-700"
+                                : "text-gray-900"
                             }`}
                           >
                             {milestone.title}
@@ -415,16 +384,18 @@ export default function Track() {
                           </span>
                         </div>
 
-                        <p className="text-gray-600 mb-3">
-                          {milestone.description}
-                        </p>
+                        {milestone.description && (
+                          <p className="text-gray-600 mb-3">
+                            {milestone.description}
+                          </p>
+                        )}
 
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {milestone.completed
                               ? `Completed: ${new Date(
-                                  milestone.date
+                                  milestone.completedAt
                                 ).toLocaleDateString()}`
                               : `Expected: ${
                                   milestone.expectedAge || "Track progress"
@@ -469,6 +440,150 @@ export default function Track() {
             </motion.div>
           )}
         </div>
+
+        {/* Add Milestone Modal */}
+        <AnimatePresence>
+          {showAddModal && (
+            <motion.div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddModal(false)}
+            >
+              <motion.div
+                className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Add New Milestone
+                  </h3>
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                  >
+                    <X className="w-6 h-6 text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleAddMilestone} className="space-y-5">
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      value={newMilestone.category}
+                      onChange={(e) =>
+                        setNewMilestone({
+                          ...newMilestone,
+                          category: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                    >
+                      {categories.slice(1).map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Milestone Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={newMilestone.title}
+                      onChange={(e) =>
+                        setNewMilestone({
+                          ...newMilestone,
+                          title: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., First Steps"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                      required
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Description (Optional)
+                    </label>
+                    <textarea
+                      value={newMilestone.description}
+                      onChange={(e) =>
+                        setNewMilestone({
+                          ...newMilestone,
+                          description: e.target.value,
+                        })
+                      }
+                      placeholder="Describe the milestone..."
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Expected Age */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Expected Age (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newMilestone.expectedAge}
+                      onChange={(e) =>
+                        setNewMilestone({
+                          ...newMilestone,
+                          expectedAge: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 12 months"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(false)}
+                      className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50"
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader className="w-5 h-5 animate-spin" />
+                          Saving...
+                        </span>
+                      ) : (
+                        "Add Milestone"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageWrapper>
   );

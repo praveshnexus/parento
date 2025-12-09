@@ -12,7 +12,6 @@ import {
   User,
   Phone,
 } from "lucide-react";
-import { fadeIn, slideUp } from "../utils/animations";
 import { useAuth } from "../context/AuthContext";
 
 /* ============================

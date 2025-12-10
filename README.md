@@ -7,7 +7,7 @@
 [![Firebase](https://img.shields.io/badge/Firebase-10.0.0-FFCA28?logo=firebase)](https://firebase.google.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 
-**Live Demo**: [https://parento.vercel.app](https://parento.vercel.app)
+**Live Demo**: [https://parento.vercel.app]([https://parento.vercel.app](https://parento-b15nybzz2-praveshs-projects-2c8fcd7f.vercel.app/))
 
 > A comprehensive full-stack web application designed to empower parents with tools for tracking child development, connecting with community, and accessing expert resources.
 

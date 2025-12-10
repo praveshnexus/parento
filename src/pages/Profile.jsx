@@ -389,11 +389,11 @@ export default function Profile() {
             </button>
 
             <button
-              onClick={() => navigate("/community")}
+              onClick={() => navigate("/comunity")}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-left"
             >
               <MessageCircle className="w-8 h-8 text-purple-500 mb-2" />
-              <h3 className="font-semibold text-gray-800">Join Community</h3>
+              <h3 className="font-semibold text-gray-800">Join Comunity</h3>
               <p className="text-sm text-gray-600">
                 Connect with other parents
               </p>

@@ -49,7 +49,7 @@ export default function TopNav() {
   const privateLinks = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
     { name: "Track", path: "/track", icon: Target },
-    { name: "Community", path: "/community", icon: Users },
+    { name: "Comunity", path: "/comunity", icon: Users },
     { name: "Consult", path: "/consult", icon: Users },
     { name: "Resources", path: "/learningresources", icon: BookOpen },
   ];

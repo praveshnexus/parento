@@ -17,7 +17,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Track from "./pages/Track";
 import Consult from "./pages/Consult";
-import Community from "./pages/Comunity";
+import Comunity from "./pages/Comunity";
 import Profile from "./pages/Profile";
 import LearningResources from "./pages/LearningResources";
 
@@ -62,10 +62,10 @@ export default function App() {
           />
 
           <Route
-            path="/community"
+            path="/comunity"
             element={
               <ProtectedRoute>
-                <Community />
+                <Comunity />
               </ProtectedRoute>
             }
           />

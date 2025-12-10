@@ -250,10 +250,10 @@ export default function Dashboard() {
           />
           <StatCard
             icon={MessageCircle}
-            label="Community"
+            label="Comunity"
             value={stats.totalPosts}
             color="bg-pink-500"
-            onClick={() => navigate("/community")}
+            onClick={() => navigate("/comunity")}
           />
         </div>
 

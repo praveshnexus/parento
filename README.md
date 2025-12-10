@@ -1,6 +1,6 @@
 # 🍼 Parento - Modern Parenting Platform
 
-![Parento Banner](https://via.placeholder.com/1200x300/4F46E5/FFFFFF?text=Parento+-+Empowering+Parents)
+![Parento Banner](./screenshots/home.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![React](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react)](https://reactjs.org/)
@@ -125,10 +125,10 @@ The application provides an intuitive, mobile-responsive interface with smooth a
 ![Dashboard](./screenshots/dashboard.png)
 
 ### Track Milestones
-![Track](./screenshots/track.png)
+![Track](./screenshots/milestones.png)
 
-### Community
-![Community](./screenshots/community.png)
+### Comunity
+![Comunity](./screenshots/comunity.png)
 
 ### Doctor Consultation
 ![Consult](./screenshots/consult.png)
@@ -413,11 +413,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-**Your Name** - [@yourtwitter](https://twitter.com/yourtwitter) - your.email@example.com
+**Pravesh Yadav**  
+GitHub: https://github.com/praveshnexus  
 
-**Project Link**: [https://github.com/yourusername/parento](https://github.com/yourusername/parento)
+LinkedIn: https://www.linkedin.com/in/pravesh-yadav-a6536a207/ 
 
-**Live Demo**: [https://parento.vercel.app](https://parento.vercel.app)
+Project Link: 
 
 ---
 

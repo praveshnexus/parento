@@ -1,413 +1,641 @@
-// src/pages/Community.js
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
 import {
-  Users,
   Heart,
   MessageCircle,
   Share2,
-  MoreVertical,
   Plus,
-  TrendingUp,
-  Clock,
-  Send
+  X,
+  Send,
+  Trash2,
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import PageWrapper from "../components/PageWrapper";
-import { fadeIn, slideUp, cardHover, staggerContainer, staggerItem } from "../utils/animations";
 import { useAuth } from "../context/AuthContext";
-import { getUserAvatar } from "../utils/avatarHelper";
 import { db } from "../firebase/firebase";
-import { collection, query, orderBy, getDocs, addDoc, updateDoc, doc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  query,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  arrayUnion,
+  arrayRemove,
+  Timestamp,
+} from "firebase/firestore";
+import BottomNav from "../components/BottomNav";
 
 export default function Community() {
   const { currentUser, userData } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("Recent");
-  const [showCreatePost, setShowCreatePost] = useState(false);
-  const [newPostContent, setNewPostContent] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newPost, setNewPost] = useState({ content: "", image: "" });
+  const [filter, setFilter] = useState("all");
+  const [expandedComments, setExpandedComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
 
-  const filters = ["Recent", "Popular", "Following"];
-
-  // Load posts from Firestore
   useEffect(() => {
     loadPosts();
-  }, [filter]);
+  }, []);
 
   const loadPosts = async () => {
     try {
       setLoading(true);
-      const q = query(
-        collection(db, "posts"),
-        orderBy(filter === "Popular" ? "likes" : "createdAt", "desc")
-      );
-
+      const q = query(collection(db, "posts"));
       const querySnapshot = await getDocs(q);
-      const postsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
 
+      const postsData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate
+            ? data.createdAt.toDate()
+            : new Date(),
+          likes: data.likes || [],
+          comments: data.comments || [],
+        };
+      });
+
+      postsData.sort((a, b) => b.createdAt - a.createdAt);
       setPosts(postsData);
     } catch (error) {
-      console.error("Error loading posts:", error);
-      // Show sample data if Firestore fails
-      setPosts(getSamplePosts());
+      toast.error("Failed to load posts");
     } finally {
       setLoading(false);
     }
   };
 
-  // Sample posts for demo
-  const getSamplePosts = () => [
-    {
-      id: "1",
-      userName: "Sarah Johnson",
-      userPhotoURL: null,
-      content: "Just celebrated Emma's first steps today! She walked 5 steps on her own. So proud! 👶🎉",
-      timestamp: new Date().toISOString(),
-      likes: 24,
-      likedBy: [],
-      comments: 8,
-      shares: 2
-    },
-    {
-      id: "2",
-      userName: "Michael Chen",
-      userPhotoURL: null,
-      content: "Any tips for getting a 2-year-old to sleep through the night? We've tried everything!",
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      likes: 15,
-      likedBy: [],
-      comments: 12,
-      shares: 1
-    },
-    {
-      id: "3",
-      userName: "Priya Sharma",
-      userPhotoURL: null,
-      content: "Found this amazing book on toddler nutrition. Highly recommend 'Feeding Your Child' by Dr. Smith!",
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      likes: 31,
-      likedBy: [],
-      comments: 5,
-      shares: 8
-    }
-  ];
+  const handleCreatePost = async (e) => {
+    e.preventDefault();
 
-  // Create new post
-  const createPost = async () => {
-    if (!newPostContent.trim()) return;
+    if (!newPost.content.trim()) {
+      toast.error("Please write something!");
+      return;
+    }
+
+    const loadingToast = toast.loading("Creating post...");
 
     try {
       const postData = {
         userId: currentUser.uid,
-        userName: userData?.fullName || currentUser.displayName || "Anonymous",
-        userPhotoURL: userData?.photoURL || null,
-        content: newPostContent,
-        timestamp: new Date().toISOString(),
-        likes: 0,
-        likedBy: [],
-        comments: 0,
-        shares: 0
+        userName:
+          userData?.fullName ||
+          currentUser.email?.split("@")[0] ||
+          "Anonymous",
+        userAvatar: userData?.photoURL || null,
+        content: newPost.content.trim(),
+        image: newPost.image.trim() || null,
+        likes: [],
+        comments: [],
+        createdAt: Timestamp.now(),
       };
 
-      const docRef = await addDoc(collection(db, "posts"), postData);
-      
-      setPosts(prev => [{
-        id: docRef.id,
-        ...postData
-      }, ...prev]);
+      await addDoc(collection(db, "posts"), postData);
+      await loadPosts();
 
-      setNewPostContent("");
-      setShowCreatePost(false);
+      setNewPost({ content: "", image: "" });
+      setShowCreateModal(false);
+
+      toast.success("Post created successfully!", {
+        id: loadingToast,
+      });
     } catch (error) {
-      console.error("Error creating post:", error);
+      toast.error("Failed to create post", {
+        id: loadingToast,
+      });
     }
   };
 
-  // Toggle like
-  const toggleLike = async (postId) => {
+  const toggleLike = async (postId, currentLikes) => {
     try {
-      const post = posts.find(p => p.id === postId);
-      const hasLiked = post.likedBy?.includes(currentUser.uid);
+      const postRef = doc(db, "posts", postId);
+      const hasLiked = currentLikes.includes(currentUser.uid);
 
-      // Update UI optimistically
-      setPosts(prev =>
-        prev.map(p =>
+      if (hasLiked) {
+        await updateDoc(postRef, {
+          likes: arrayRemove(currentUser.uid),
+        });
+      } else {
+        await updateDoc(postRef, {
+          likes: arrayUnion(currentUser.uid),
+        });
+        toast("❤️", {
+          duration: 1000,
+        });
+      }
+
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                likes: hasLiked
+                  ? post.likes.filter((uid) => uid !== currentUser.uid)
+                  : [...post.likes, currentUser.uid],
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      toast.error("Failed to update like");
+    }
+  };
+
+  const deletePost = async (postId, postUserId) => {
+    if (postUserId !== currentUser.uid) {
+      toast.error("You can only delete your own posts!");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+      setPosts((prev) => prev.filter((post) => post.id !== postId));
+      toast.success("Post deleted successfully!");
+    } catch (error) {
+      toast.error("Failed to delete post");
+    }
+  };
+
+  const toggleComments = (postId) => {
+    setExpandedComments((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
+
+  const handleAddComment = async (postId) => {
+    const commentText = commentInputs[postId]?.trim();
+
+    if (!commentText) {
+      toast.error("Comment cannot be empty!");
+      return;
+    }
+
+    try {
+      const postRef = doc(db, "posts", postId);
+      const newComment = {
+        id: Date.now().toString(),
+        userId: currentUser.uid,
+        userName:
+          userData?.fullName ||
+          currentUser.email?.split("@")[0] ||
+          "Anonymous",
+        text: commentText,
+        createdAt: new Date().toISOString(),
+      };
+
+      await updateDoc(postRef, {
+        comments: arrayUnion(newComment),
+      });
+
+      // Update local state
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? { ...post, comments: [...post.comments, newComment] }
+            : post
+        )
+      );
+
+      // Clear input
+      setCommentInputs((prev) => ({
+        ...prev,
+        [postId]: "",
+      }));
+
+      toast.success("Comment added!");
+    } catch (error) {
+      toast.error("Failed to add comment");
+    }
+  };
+
+  const deleteComment = async (postId, commentId, commentUserId) => {
+    if (commentUserId !== currentUser.uid) {
+      toast.error("You can only delete your own comments!");
+      return;
+    }
+
+    try {
+      const post = posts.find((p) => p.id === postId);
+      const commentToDelete = post.comments.find((c) => c.id === commentId);
+
+      const postRef = doc(db, "posts", postId);
+      await updateDoc(postRef, {
+        comments: arrayRemove(commentToDelete),
+      });
+
+      setPosts((prev) =>
+        prev.map((p) =>
           p.id === postId
             ? {
                 ...p,
-                likes: hasLiked ? p.likes - 1 : p.likes + 1,
-                likedBy: hasLiked
-                  ? p.likedBy.filter(id => id !== currentUser.uid)
-                  : [...(p.likedBy || []), currentUser.uid]
+                comments: p.comments.filter((c) => c.id !== commentId),
               }
             : p
         )
       );
 
-      // If it's real data, update Firestore
-      if (post.userId) {
-        const postRef = doc(db, "posts", postId);
-        await updateDoc(postRef, {
-          likes: hasLiked ? increment(-1) : increment(1),
-          likedBy: hasLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
-        });
-      }
+      toast.success("Comment deleted!");
     } catch (error) {
-      console.error("Error toggling like:", error);
+      toast.error("Failed to delete comment");
     }
   };
 
-  // Format timestamp
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / 60000);
+  const filteredPosts = posts.filter((post) => {
+    if (filter === "my") return post.userId === currentUser.uid;
+    if (filter === "liked") return post.likes.includes(currentUser.uid);
+    return true;
+  });
 
-    if (diffInMinutes < 1) return "Just now";
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`;
-    return date.toLocaleDateString();
+  const getTimeAgo = (date) => {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   return (
-    <PageWrapper>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
-        {/* Header */}
-        <motion.div
-          className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white py-16 px-6 lg:px-20"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="max-w-7xl mx-auto">
-            <motion.h1
-              className="text-4xl lg:text-5xl font-bold mb-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Community
-            </motion.h1>
-            <motion.p
-              className="text-white/90 text-lg"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              Connect with other parents and share experiences
-            </motion.p>
-          </div>
-        </motion.div>
-
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 -mt-12">
-          {/* Create Post Card */}
-          <motion.div
-            className="bg-white rounded-2xl shadow-xl p-6 mb-8"
-            {...slideUp}
-            {...cardHover}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+      <Toaster position="top-center" />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
+        <div className="mb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold text-gray-800 mb-2"
           >
-            <div className="flex items-center gap-4">
-              <img
-                src={getUserAvatar(userData, 50)}
-                alt="You"
-                className="w-12 h-12 rounded-full"
-              />
+            Community
+          </motion.h1>
+          <p className="text-gray-600">Connect with fellow parents</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
-                onClick={() => setShowCreatePost(!showCreatePost)}
-                className="flex-1 text-left px-4 py-3 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
+                onClick={() => setFilter("all")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  filter === "all"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
               >
-                What's on your mind?
+                All Posts
+              </button>
+              <button
+                onClick={() => setFilter("my")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  filter === "my"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                My Posts
+              </button>
+              <button
+                onClick={() => setFilter("liked")}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  filter === "liked"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Liked
               </button>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowCreateModal(true)}
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition flex items-center justify-center"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Post
+            </motion.button>
+          </div>
+        </div>
 
-            {/* Create Post Form */}
-            {showCreatePost && (
-              <motion.div
-                className="mt-4 pt-4 border-t"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-gray-600 mt-4">Loading posts...</p>
+          </div>
+        ) : filteredPosts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-xl shadow-sm p-12 text-center"
+          >
+            <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {filter === "my"
+                ? "You haven't posted yet"
+                : filter === "liked"
+                ? "No liked posts yet"
+                : "No posts yet"}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {filter === "my"
+                ? "Share your parenting journey with the community"
+                : "Be the first to share something!"}
+            </p>
+            {filter === "all" && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition"
               >
-                <textarea
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="Share your thoughts, questions, or tips..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                  rows={4}
-                />
-                <div className="flex justify-end gap-3 mt-3">
-                  <button
-                    onClick={() => {
-                      setShowCreatePost(false);
-                      setNewPostContent("");
-                    }}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <motion.button
-                    onClick={createPost}
-                    disabled={!newPostContent.trim()}
-                    className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: newPostContent.trim() ? 1.05 : 1 }}
-                    whileTap={{ scale: newPostContent.trim() ? 0.95 : 1 }}
-                  >
-                    <Send className="w-4 h-4" />
-                    Post
-                  </motion.button>
-                </div>
-              </motion.div>
+                Create First Post
+              </button>
             )}
           </motion.div>
+        ) : (
+          <div className="space-y-4">
+            <AnimatePresence>
+              {filteredPosts.map((post, index) => {
+                const hasLiked = post.likes.includes(currentUser.uid);
+                const isOwnPost = post.userId === currentUser.uid;
+                const isCommentsExpanded = expandedComments[post.id];
 
-          {/* Filters */}
-          <motion.div
-            className="flex gap-3 mb-6"
-            {...staggerContainer}
-            initial="initial"
-            animate="animate"
-          >
-            {filters.map((filterOption, index) => (
-              <motion.button
-                key={filterOption}
-                onClick={() => setFilter(filterOption)}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                  filter === filterOption
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-                {...staggerItem}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {filterOption}
-              </motion.button>
-            ))}
-          </motion.div>
-
-          {/* Posts List */}
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading posts...</p>
-            </div>
-          ) : (
-            <motion.div
-              className="space-y-6"
-              {...staggerContainer}
-              initial="initial"
-              animate="animate"
-            >
-              {posts.map((post, index) => {
-                const hasLiked = post.likedBy?.includes(currentUser?.uid);
-                
                 return (
                   <motion.div
                     key={post.id}
-                    className="bg-white rounded-xl shadow-md p-6"
-                    {...staggerItem}
-                    {...cardHover}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition"
                   >
-                    {/* Post Header */}
-                    <div className="flex items-start gap-4 mb-4">
-                      <img
-                        src={getUserAvatar({ fullName: post.userName, photoURL: post.userPhotoURL }, 50)}
-                        alt={post.userName}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900">{post.userName}</h3>
-                        <p className="text-sm text-gray-500 flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          {formatTimestamp(post.timestamp)}
-                        </p>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                          {post.userName?.charAt(0).toUpperCase() || "A"}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-800">
+                            {post.userName}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {getTimeAgo(post.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <MoreVertical className="w-5 h-5" />
+                      {isOwnPost && (
+                        <button
+                          onClick={() => deletePost(post.id, post.userId)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
+                          title="Delete post"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-gray-800 mb-4 whitespace-pre-wrap">
+                      {post.content}
+                    </p>
+
+                    {post.image && (
+                      <img
+                        src={post.image}
+                        alt="Post"
+                        className="w-full rounded-lg mb-4 max-h-96 object-cover"
+                      />
+                    )}
+
+                    <div className="flex items-center gap-6 pt-4 border-t border-gray-100">
+                      <button
+                        onClick={() => toggleLike(post.id, post.likes)}
+                        className={`flex items-center gap-2 transition ${
+                          hasLiked
+                            ? "text-red-500"
+                            : "text-gray-600 hover:text-red-500"
+                        }`}
+                      >
+                        <Heart
+                          className={`w-5 h-5 ${
+                            hasLiked ? "fill-current" : ""
+                          }`}
+                        />
+                        <span className="font-medium">
+                          {post.likes.length}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => toggleComments(post.id)}
+                        className="flex items-center gap-2 text-gray-600 hover:text-blue-500 transition"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span className="font-medium">
+                          {post.comments.length}
+                        </span>
+                        {isCommentsExpanded ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <button className="flex items-center gap-2 text-gray-600 hover:text-green-500 transition">
+                        <Share2 className="w-5 h-5" />
+                        <span className="font-medium">Share</span>
                       </button>
                     </div>
 
-                    {/* Post Content */}
-                    <p className="text-gray-700 mb-4 leading-relaxed">{post.content}</p>
+                    {/* Comments Section */}
+                    <AnimatePresence>
+                      {isCommentsExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 pt-4 border-t border-gray-100"
+                        >
+                          {/* Comments List */}
+                          <div className="space-y-3 mb-4">
+                            {post.comments.length === 0 ? (
+                              <p className="text-sm text-gray-500 text-center py-4">
+                                No comments yet. Be the first to comment!
+                              </p>
+                            ) : (
+                              post.comments.map((comment) => (
+                                <div
+                                  key={comment.id}
+                                  className="flex gap-3 p-3 bg-gray-50 rounded-lg"
+                                >
+                                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    {comment.userName?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm text-gray-800">
+                                          {comment.userName}
+                                        </p>
+                                        <p className="text-sm text-gray-700 mt-1 break-words">
+                                          {comment.text}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {getTimeAgo(comment.createdAt)}
+                                        </p>
+                                      </div>
+                                      {comment.userId === currentUser.uid && (
+                                        <button
+                                          onClick={() =>
+                                            deleteComment(
+                                              post.id,
+                                              comment.id,
+                                              comment.userId
+                                            )
+                                          }
+                                          className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
 
-                    {/* Post Stats */}
-                    <div className="flex items-center gap-6 py-3 border-t border-b">
-                      <span className="text-sm text-gray-600">
-                        {post.likes} {post.likes === 1 ? "like" : "likes"}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {post.comments} {post.comments === 1 ? "comment" : "comments"}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {post.shares} {post.shares === 1 ? "share" : "shares"}
-                      </span>
-                    </div>
-
-                    {/* Post Actions */}
-                    <div className="flex items-center gap-2 mt-3">
-                      <motion.button
-                        onClick={() => toggleLike(post.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold transition-colors ${
-                          hasLiked
-                            ? "text-pink-500 bg-pink-50"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Heart className={`w-5 h-5 ${hasLiked ? "fill-current" : ""}`} />
-                        Like
-                      </motion.button>
-                      
-                      <motion.button
-                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        Comment
-                      </motion.button>
-                      
-                      <motion.button
-                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Share2 className="w-5 h-5" />
-                        Share
-                      </motion.button>
-                    </div>
+                          {/* Add Comment Input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={commentInputs[post.id] || ""}
+                              onChange={(e) =>
+                                setCommentInputs((prev) => ({
+                                  ...prev,
+                                  [post.id]: e.target.value,
+                                }))
+                              }
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  handleAddComment(post.id);
+                                }
+                              }}
+                              placeholder="Write a comment..."
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                            />
+                            <button
+                              onClick={() => handleAddComment(post.id)}
+                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 );
               })}
-
-              {posts.length === 0 && (
-                <motion.div
-                  className="text-center py-12 bg-white rounded-xl shadow-md"
-                  {...fadeIn}
-                >
-                  <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">No Posts Yet</h3>
-                  <p className="text-gray-600 mb-4">
-                    Be the first to share something with the community!
-                  </p>
-                  <button
-                    onClick={() => setShowCreatePost(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold inline-flex items-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Create Your First Post
-                  </button>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
-    </PageWrapper>
+
+      <AnimatePresence>
+        {showCreateModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setShowCreateModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    Create Post
+                  </h2>
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreatePost} className="space-y-4">
+                  <div>
+                    <textarea
+                      value={newPost.content}
+                      onChange={(e) =>
+                        setNewPost({ ...newPost, content: e.target.value })
+                      }
+                      placeholder="What's on your mind?"
+                      rows={5}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image URL (Optional)
+                    </label>
+                    <div className="relative">
+                      <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="url"
+                        value={newPost.image}
+                        onChange={(e) =>
+                          setNewPost({ ...newPost, image: e.target.value })
+                        }
+                        placeholder="https://example.com/image.jpg"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(false)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition flex items-center justify-center"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Post
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <BottomNav />
+    </div>
   );
 }

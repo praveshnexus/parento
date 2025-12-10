@@ -131,9 +131,10 @@ export default function Signup() {
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex items-center justify-center p-6">
       <motion.div
         className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative"
-        initial={fadeIn.initial}
-        animate={slideUp.animate}
-        transition={fadeIn.transition}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
       >
         {/* Close Button */}
         <motion.button
@@ -163,6 +164,8 @@ export default function Signup() {
               role="alert"
               aria-live="assertive"
               className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
             >
               <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
               <p className="text-sm text-red-700">{error}</p>
@@ -175,14 +178,14 @@ export default function Signup() {
               <label className="text-sm font-semibold text-gray-700">
                 Full Name *
               </label>
-              <div className="relative">
+              <div className="relative mt-1">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500 outline-none"
                   disabled={loading}
                 />
               </div>
@@ -193,14 +196,14 @@ export default function Signup() {
               <label className="text-sm font-semibold text-gray-700">
                 Email *
               </label>
-              <div className="relative">
+              <div className="relative mt-1">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500 outline-none"
                   disabled={loading}
                 />
               </div>
@@ -211,14 +214,14 @@ export default function Signup() {
               <label className="text-sm font-semibold text-gray-700">
                 Phone (Optional)
               </label>
-              <div className="relative">
+              <div className="relative mt-1">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500 outline-none"
                   disabled={loading}
                 />
               </div>
@@ -229,14 +232,14 @@ export default function Signup() {
               <label className="text-sm font-semibold text-gray-700">
                 Password *
               </label>
-              <div className="relative">
+              <div className="relative mt-1">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-12 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500"
+                  className="w-full pl-12 pr-12 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500 outline-none"
                   disabled={loading}
                 />
                 <button
@@ -255,14 +258,14 @@ export default function Signup() {
               <label className="text-sm font-semibold text-gray-700">
                 Confirm Password *
               </label>
-              <div className="relative">
+              <div className="relative mt-1">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-12 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500"
+                  className="w-full pl-12 pr-12 py-3 border-2 border-gray-300 rounded-xl focus:border-pink-500 outline-none"
                   disabled={loading}
                 />
                 <button
@@ -283,7 +286,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-bold"
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
@@ -293,7 +296,7 @@ export default function Signup() {
           <button
             onClick={handleGoogleSignup}
             disabled={loading}
-            className="w-full mt-4 border-2 py-3 rounded-xl font-semibold"
+            className="w-full mt-4 border-2 border-gray-200 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-50 transition"
           >
             Continue with Google
           </button>

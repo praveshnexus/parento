@@ -1,26 +1,4 @@
-# ======================
-# Dependencies
-# ======================
-node_modules/
-
-# ======================
-# Build output
-# ======================
-dist/
-dist-ssr/
-
-# ======================
-# Environment variables (CRITICAL)
-# ======================
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# ======================
 # Logs
-# ======================
 logs
 *.log
 npm-debug.log*
@@ -29,38 +7,64 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# ======================
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Firebase
-# ======================
-firebase-debug.log
+.firebase
 .firebaserc
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firestore.indexes.json
+firestore.rules
+
+# Sensitive files
 parentoid.txt
+*-credentials.json
+service-account*.json
 
-# ======================
-# OS / Editor junk
-# ======================
-.DS_Store
-Thumbs.db
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
 
-# ======================
-# IDEs
-# ======================
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# ======================
-# Vercel / Netlify
-# ======================
-.vercel
-.netlify
+# Build outputs
+build
+.cache
+.parcel-cache
+.next
+out
+.nuxt
+.vuepress/dist
 
-# ======================
-# Local cache
-# ======================
-*.local
+# Testing
+coverage
+.nyc_output
+*.lcov
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+.temp
+.tmp

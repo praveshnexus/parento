@@ -1,76 +1,81 @@
-// src/pages/Track.jsx - FULLY FUNCTIONAL VERSION
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
 import {
-  Baby,
-  Calendar,
-  Award,
+  TrendingUp,
+  Search,
   Plus,
-  Activity,
+  Baby,
   Brain,
-  Smile,
-  Heart,
-  CheckCircle,
+  Users,
+  MessageCircle,
+  CheckCircle2,
   Circle,
   X,
-  Loader
+  Trash2,
 } from "lucide-react";
-import PageWrapper from "../components/PageWrapper";
-import {
-  fadeIn,
-  slideUp,
-  cardHover,
-  staggerContainer,
-  staggerItem,
-} from "../utils/animations";
 import { useAuth } from "../context/AuthContext";
-import { getChildAvatar } from "../utils/avatarHelper";
 import { db } from "../firebase/firebase";
 import {
   collection,
+  addDoc,
   query,
   where,
   getDocs,
-  addDoc,
   updateDoc,
   deleteDoc,
   doc,
-  orderBy,
-  serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
+import BottomNav from "../components/BottomNav";
+
+const categories = [
+  { id: "all", name: "All Categories", icon: TrendingUp, color: "blue" },
+  { id: "physical", name: "Physical", icon: Baby, color: "green" },
+  { id: "cognitive", name: "Cognitive", icon: Brain, color: "purple" },
+  { id: "social", name: "Social", icon: Users, color: "pink" },
+  { id: "language", name: "Language", icon: MessageCircle, color: "red" },
+];
 
 export default function Track() {
-  const { currentUser, userData } = useAuth();
+  const { currentUser } = useAuth();
   const [milestones, setMilestones] = useState([]);
+  const [filteredMilestones, setFilteredMilestones] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [saving, setSaving] = useState(false);
 
-  // New milestone form state
   const [newMilestone, setNewMilestone] = useState({
-    category: "Physical",
+    category: "physical",
     title: "",
     description: "",
     expectedAge: "",
   });
 
-  // Milestone categories
-  const categories = ["All", "Physical", "Cognitive", "Social", "Emotional"];
-
-  // Child info (from userData or default)
-  const child = userData?.children?.[0] || {
-    name: "Emma Johnson",
-    age: "2 years 4 months",
-    gender: "Female",
-  };
-
-  // Load milestones from Firestore
   useEffect(() => {
-    if (currentUser) {
-      loadMilestones();
-    }
+    loadMilestones();
   }, [currentUser]);
+
+  useEffect(() => {
+    let filtered = milestones;
+
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (m) => m.category.toLowerCase() === selectedCategory
+      );
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (m) =>
+          m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredMilestones(filtered);
+  }, [milestones, selectedCategory, searchQuery]);
 
   const loadMilestones = async () => {
     if (!currentUser) return;
@@ -79,404 +84,392 @@ export default function Track() {
       setLoading(true);
       const q = query(
         collection(db, "milestones"),
-        where("userId", "==", currentUser.uid),
-        orderBy("createdAt", "desc")
+        where("userId", "==", currentUser.uid)
       );
 
       const querySnapshot = await getDocs(q);
-      const milestonesData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const milestonesData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+        };
+      });
 
+      milestonesData.sort((a, b) => b.createdAt - a.createdAt);
       setMilestones(milestonesData);
     } catch (error) {
-      // If no milestones or permission error, start with empty array
-      setMilestones([]);
+      toast.error("Failed to load milestones");
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle milestone completion
-  const toggleMilestone = async (milestoneId) => {
+  const toggleMilestone = async (milestoneId, currentStatus) => {
     try {
-      const milestone = milestones.find((m) => m.id === milestoneId);
-      const newCompletedState = !milestone.completed;
-
-      // Update Firestore
       const milestoneRef = doc(db, "milestones", milestoneId);
       await updateDoc(milestoneRef, {
-        completed: newCompletedState,
-        completedAt: newCompletedState ? serverTimestamp() : null,
-        ageAtCompletion: newCompletedState ? child.age : null,
+        isCompleted: !currentStatus,
       });
 
-      // Update local state
       setMilestones((prev) =>
         prev.map((m) =>
-          m.id === milestoneId
-            ? {
-                ...m,
-                completed: newCompletedState,
-                completedAt: newCompletedState ? new Date().toISOString() : null,
-                ageAtCompletion: newCompletedState ? child.age : null,
-              }
-            : m
+          m.id === milestoneId ? { ...m, isCompleted: !currentStatus } : m
         )
       );
+
+      if (!currentStatus) {
+        toast.success("🎉 Milestone completed!", {
+          icon: "✅",
+        });
+      } else {
+        toast("Milestone marked as incomplete", {
+          icon: "⏳",
+        });
+      }
     } catch (error) {
-      alert("Failed to update milestone. Please try again.");
+      toast.error("Failed to update milestone");
     }
   };
 
-  // Add new milestone
-  const handleAddMilestone = async (e) => {
-    e.preventDefault();
-
-    if (!newMilestone.title.trim()) {
-      alert("Please enter a milestone title");
+  const deleteMilestone = async (milestoneId) => {
+    if (!confirm("Are you sure you want to delete this milestone?")) {
       return;
     }
 
     try {
-      setSaving(true);
+      await deleteDoc(doc(db, "milestones", milestoneId));
+      setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
+      toast.success("Milestone deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete milestone");
+    }
+  };
 
+  const handleAddMilestone = async (e) => {
+    e.preventDefault();
+
+    if (!newMilestone.title.trim() || !newMilestone.expectedAge.trim()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const loadingToast = toast.loading("Adding milestone...");
+
+    try {
       const milestoneData = {
         userId: currentUser.uid,
         category: newMilestone.category,
         title: newMilestone.title.trim(),
         description: newMilestone.description.trim(),
         expectedAge: newMilestone.expectedAge.trim(),
-        completed: false,
-        completedAt: null,
-        ageAtCompletion: null,
-        createdAt: serverTimestamp(),
+        isCompleted: false,
+        createdAt: Timestamp.now(),
       };
 
-      const docRef = await addDoc(collection(db, "milestones"), milestoneData);
+      await addDoc(collection(db, "milestones"), milestoneData);
+      await loadMilestones();
 
-      // Add to local state
-      setMilestones((prev) => [
-        {
-          id: docRef.id,
-          ...milestoneData,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
-
-      // Reset form and close modal
       setNewMilestone({
-        category: "Physical",
+        category: "physical",
         title: "",
         description: "",
         expectedAge: "",
       });
       setShowAddModal(false);
+
+      toast.success("Milestone added successfully!", {
+        id: loadingToast,
+      });
     } catch (error) {
-      alert("Failed to add milestone. Please try again.");
-    } finally {
-      setSaving(false);
+      toast.error("Failed to add milestone", {
+        id: loadingToast,
+      });
     }
   };
 
-  // Filter milestones by category
-  const filteredMilestones =
-    selectedCategory === "All"
-      ? milestones
-      : milestones.filter((m) => m.category === selectedCategory);
-
-  const completedCount = milestones.filter((m) => m.completed).length;
-  const completionPercentage =
-    milestones.length > 0
-      ? Math.round((completedCount / milestones.length) * 100)
-      : 0;
-
-  // Category icons
-  const categoryIcons = {
-    Physical: Activity,
-    Cognitive: Brain,
-    Social: Smile,
-    Emotional: Heart,
+  const stats = {
+    total: milestones.length,
+    completed: milestones.filter((m) => m.isCompleted).length,
+    pending: milestones.filter((m) => !m.isCompleted).length,
+    completionRate:
+      milestones.length > 0
+        ? Math.round(
+            (milestones.filter((m) => m.isCompleted).length /
+              milestones.length) *
+              100
+          )
+        : 0,
   };
 
   return (
-    <PageWrapper>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
-        {/* Header */}
-        <motion.div
-          className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white py-16 px-6 lg:px-20"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="max-w-7xl mx-auto">
-            <motion.h1
-              className="text-4xl lg:text-5xl font-bold mb-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Track Development
-            </motion.h1>
-            <motion.p
-              className="text-white/90 text-lg"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              Monitor your child's growth milestones
-            </motion.p>
-          </div>
-        </motion.div>
-
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 -mt-12">
-          {/* Child Summary Card */}
-          <motion.div
-            className="bg-white rounded-2xl shadow-xl p-8 mb-8"
-            {...slideUp}
-            {...cardHover}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+      <Toaster position="top-center" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
+        <div className="mb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold text-gray-800 mb-2"
           >
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <img
-                src={getChildAvatar(child, 100)}
-                alt={child.name}
-                className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+            Track Milestones
+          </motion.h1>
+          <p className="text-gray-600">
+            Monitor your child's development journey
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 shadow-sm"
+          >
+            <div className="text-3xl font-bold text-blue-600 mb-1">
+              {stats.total}
+            </div>
+            <div className="text-sm text-gray-600">Total Milestones</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl p-6 shadow-sm"
+          >
+            <div className="text-3xl font-bold text-green-600 mb-1">
+              {stats.completed}
+            </div>
+            <div className="text-sm text-gray-600">Completed</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl p-6 shadow-sm"
+          >
+            <div className="text-3xl font-bold text-orange-600 mb-1">
+              {stats.pending}
+            </div>
+            <div className="text-sm text-gray-600">Pending</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-xl p-6 shadow-sm"
+          >
+            <div className="text-3xl font-bold text-purple-600 mb-1">
+              {stats.completionRate}%
+            </div>
+            <div className="text-sm text-gray-600">Completion Rate</div>
+          </motion.div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search milestones..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
-
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                  {child.name}
-                </h2>
-                <p className="text-gray-600 text-lg mb-4">{child.age}</p>
-
-                {/* Progress Bar */}
-                <div className="mb-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      Overall Progress
-                    </span>
-                    <span className="text-sm font-bold text-blue-600">
-                      {completionPercentage}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${completionPercentage}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                    />
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-600">
-                  {completedCount} of {milestones.length} milestones completed
-                </p>
-              </div>
-
-              {/* Add Milestone Button */}
-              <motion.button
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Plus className="w-5 h-5" />
-                Add Milestone
-              </motion.button>
             </div>
-          </motion.div>
 
-          {/* Category Filters */}
-          <motion.div
-            className="flex flex-wrap gap-3 mb-8"
-            {...staggerContainer}
-            initial="initial"
-            animate="animate"
-          >
-            {categories.map((category) => (
-              <motion.button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                  selectedCategory === category
-                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-                {...staggerItem}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {category}
-              </motion.button>
-            ))}
-          </motion.div>
-
-          {/* Milestones List */}
-          {loading ? (
-            <div className="text-center py-12">
-              <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <p className="text-gray-600">Loading milestones...</p>
-            </div>
-          ) : (
-            <motion.div
-              className="space-y-4"
-              {...staggerContainer}
-              initial="initial"
-              animate="animate"
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowAddModal(true)}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition flex items-center justify-center"
             >
-              {filteredMilestones.map((milestone) => {
-                const Icon = categoryIcons[milestone.category] || Activity;
+              <Plus className="w-5 h-5 mr-2" />
+              Add Milestone
+            </motion.button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <motion.button
+                  key={cat.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-4 py-2 rounded-lg font-medium transition flex items-center ${
+                    selectedCategory === cat.id
+                      ? `bg-${cat.color}-500 text-white`
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-2" />
+                  {cat.name}
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Milestones List */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-gray-600 mt-4">Loading milestones...</p>
+          </div>
+        ) : filteredMilestones.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-xl shadow-sm p-12 text-center"
+          >
+            <Baby className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {searchQuery || selectedCategory !== "all"
+                ? "No Milestones Found"
+                : "No Milestones Yet"}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {searchQuery || selectedCategory !== "all"
+                ? "Try adjusting your filters"
+                : "Start tracking your child's development milestones"}
+            </p>
+            {!searchQuery && selectedCategory === "all" && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition"
+              >
+                Add Your First Milestone
+              </button>
+            )}
+          </motion.div>
+        ) : (
+          <div className="grid gap-4">
+            <AnimatePresence>
+              {filteredMilestones.map((milestone, index) => {
+                const category = categories.find(
+                  (c) => c.id === milestone.category.toLowerCase()
+                );
+                const Icon = category?.icon || Baby;
 
                 return (
                   <motion.div
                     key={milestone.id}
-                    className={`bg-white rounded-xl shadow-md p-6 ${
-                      milestone.completed ? "border-l-4 border-green-500" : ""
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition ${
+                      milestone.isCompleted ? "bg-green-50" : ""
                     }`}
-                    {...staggerItem}
-                    {...cardHover}
                   >
                     <div className="flex items-start gap-4">
-                      {/* Checkbox */}
                       <button
-                        onClick={() => toggleMilestone(milestone.id)}
-                        className="flex-shrink-0 mt-1"
+                        onClick={() =>
+                          toggleMilestone(milestone.id, milestone.isCompleted)
+                        }
+                        className="mt-1 flex-shrink-0"
                       >
-                        {milestone.completed ? (
-                          <CheckCircle className="w-6 h-6 text-green-500" />
+                        {milestone.isCompleted ? (
+                          <CheckCircle2 className="w-6 h-6 text-green-500" />
                         ) : (
-                          <Circle className="w-6 h-6 text-gray-400" />
+                          <Circle className="w-6 h-6 text-gray-400 hover:text-green-500 transition" />
                         )}
                       </button>
 
-                      {/* Category Icon */}
-                      <div
-                        className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
-                          milestone.completed ? "bg-green-100" : "bg-blue-100"
-                        }`}
-                      >
-                        <Icon
-                          className={`w-6 h-6 ${
-                            milestone.completed
-                              ? "text-green-600"
-                              : "text-blue-600"
-                          }`}
-                        />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3
-                            className={`text-lg font-bold ${
-                              milestone.completed
-                                ? "text-gray-500 line-through"
-                                : "text-gray-900"
-                            }`}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h3
+                              className={`text-lg font-semibold ${
+                                milestone.isCompleted
+                                  ? "text-green-700 line-through"
+                                  : "text-gray-800"
+                              }`}
+                            >
+                              {milestone.title}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {milestone.description}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium bg-${
+                              category?.color || "blue"
+                            }-100 text-${category?.color || "blue"}-700 flex-shrink-0`}
                           >
-                            {milestone.title}
-                          </h3>
-                          <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
-                            {milestone.category}
+                            <Icon className="w-3 h-3 inline mr-1" />
+                            {category?.name || milestone.category}
                           </span>
                         </div>
-
-                        {milestone.description && (
-                          <p className="text-gray-600 mb-3">
-                            {milestone.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {milestone.completed
-                              ? `Completed: ${new Date(
-                                  milestone.completedAt
-                                ).toLocaleDateString()}`
-                              : `Expected: ${
-                                  milestone.expectedAge || "Track progress"
-                                }`}
-                          </span>
-                          {milestone.ageAtCompletion && (
-                            <span className="flex items-center gap-1">
-                              <Baby className="w-4 h-4" />
-                              Age: {milestone.ageAtCompletion}
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>Expected: {milestone.expectedAge}</span>
+                            {milestone.isCompleted && (
+                              <span className="text-green-600 font-medium">
+                                ✓ Completed
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => deleteMilestone(milestone.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0"
+                            title="Delete milestone"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
                   </motion.div>
                 );
               })}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
 
-              {filteredMilestones.length === 0 && (
-                <motion.div
-                  className="text-center py-12 bg-white rounded-xl shadow-md"
-                  {...fadeIn}
-                >
-                  <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    No Milestones Yet
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    {selectedCategory === "All"
-                      ? "Start tracking your child's development milestones"
-                      : `No ${selectedCategory} milestones found`}
-                  </p>
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold inline-flex items-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add Your First Milestone
-                  </button>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </div>
-
-        {/* Add Milestone Modal */}
-        <AnimatePresence>
-          {showAddModal && (
+      {/* Add Milestone Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <>
             <motion.div
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
               onClick={() => setShowAddModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <motion.div
-                className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header */}
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    Add New Milestone
-                  </h3>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    Add Milestone
+                  </h2>
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full"
+                    className="text-gray-400 hover:text-gray-600"
                   >
-                    <X className="w-6 h-6 text-gray-500" />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleAddMilestone} className="space-y-5">
-                  {/* Category */}
+                <form onSubmit={handleAddMilestone} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category *
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category
                     </label>
                     <select
                       value={newMilestone.category}
@@ -486,20 +479,21 @@ export default function Track() {
                           category: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     >
-                      {categories.slice(1).map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
+                      {categories
+                        .filter((c) => c.id !== "all")
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
-                  {/* Title */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Milestone Title *
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Title *
                     </label>
                     <input
                       type="text"
@@ -511,15 +505,14 @@ export default function Track() {
                         })
                       }
                       placeholder="e.g., First Steps"
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
                       required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
                   </div>
 
-                  {/* Description */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description (Optional)
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
                     </label>
                     <textarea
                       value={newMilestone.description}
@@ -531,14 +524,13 @@ export default function Track() {
                       }
                       placeholder="Describe the milestone..."
                       rows={3}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                     />
                   </div>
 
-                  {/* Expected Age */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Expected Age (Optional)
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expected Age *
                     </label>
                     <input
                       type="text"
@@ -550,41 +542,34 @@ export default function Track() {
                         })
                       }
                       placeholder="e.g., 12 months"
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
                   </div>
 
-                  {/* Buttons */}
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
                       onClick={() => setShowAddModal(false)}
-                      className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50"
-                      disabled={saving}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={saving}
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold disabled:opacity-50"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition"
                     >
-                      {saving ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader className="w-5 h-5 animate-spin" />
-                          Saving...
-                        </span>
-                      ) : (
-                        "Add Milestone"
-                      )}
+                      Add Milestone
                     </button>
                   </div>
                 </form>
-              </motion.div>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </PageWrapper>
+          </>
+        )}
+      </AnimatePresence>
+
+      <BottomNav />
+    </div>
   );
 }

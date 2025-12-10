@@ -1,188 +1,187 @@
-// src/components/TopNav.js
-import { Link, useNavigate } from "react-router-dom";
-import { Baby, LogOut, Bell, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getUserAvatar } from "../utils/avatarHelper";
-import { useState, useEffect } from "react";
+import {
+  User,
+  LogOut,
+  Menu,
+  X,
+  Home,
+  Target,
+  Users,
+  BookOpen,
+  Heart,
+  Info,
+  Mail,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function TopNav() {
-  const { currentUser, userData, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-  const [notifications] = useState(3); // Example notification count
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const location = useLocation();
 
-  // Close dropdown when clicking outside
+  const [showProfile, setShowProfile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const profileRef = useRef(null);
+
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest(".profile-dropdown")) setShowProfileMenu(false);
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfile(false);
+      }
     };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  /* 🔹 ROUTE CHECK */
+  const isActive = (path) => location.pathname === path;
+
+  /* 🔹 NAV CONFIG */
+  const publicLinks = [
+    { name: "Home", path: "/", icon: Home },
+    { name: "About", path: "/about", icon: Info },
+    { name: "Contact", path: "/contact", icon: Mail },
+  ];
+
+  const privateLinks = [
+    { name: "Dashboard", path: "/dashboard", icon: Home },
+    { name: "Track", path: "/track", icon: Target },
+    { name: "Community", path: "/community", icon: Users },
+    { name: "Consult", path: "/consult", icon: Users },
+    { name: "Resources", path: "/learningresources", icon: BookOpen },
+  ];
+
+  const navLinks = currentUser ? privateLinks : publicLinks;
 
   const handleLogout = async () => {
     try {
       await logout();
+      toast.success("Logged out");
       navigate("/");
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch {
+      toast.error("Logout failed");
     }
   };
 
   return (
-    <nav className="hidden md:block bg-white shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow">
-              <Baby className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Parento</h1>
-              <p className="text-xs text-gray-500">Parenting Made Easy</p>
-            </div>
-          </Link>
-
-          {/* Navigation Links */}
-          <div className="flex items-center gap-8">
-            {!currentUser ? (
-              // BEFORE LOGIN
-              <>
-                <Link
-                  to="/"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/about"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  About
-                </Link>
-                <Link
-                  to="/contact"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Contact
-                </Link>
-              </>
-            ) : (
-              // AFTER LOGIN
-              <>
-                <Link
-                  to="/dashboard"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/track"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Track
-                </Link>
-                <Link
-                  to="/consult"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Consult
-                </Link>
-                <Link
-                  to="/community"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Community
-                </Link>
-                <Link
-                  to="/learningresources"
-                  className="text-gray-700 hover:text-pink-500 font-medium transition-colors"
-                >
-                  Learn
-                </Link>
-              </>
-            )}
+    <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+        {/* Logo */}
+        <div
+          onClick={() => navigate(currentUser ? "/dashboard" : "/")}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <Heart size={18} className="text-white" />
           </div>
-
-          {/* Right Side */}
-          <div className="flex items-center gap-4">
-            {!currentUser ? (
-              // BEFORE LOGIN - Show Get Started
-              <Link
-                to="/signup"
-                className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                Get Started
-              </Link>
-            ) : (
-              // AFTER LOGIN - Notification + Profile
-              <>
-                {/* Notification Bell */}
-                <button className="relative p-2 text-gray-700 hover:text-pink-500 transition-colors">
-                  <Bell className="w-6 h-6" />
-                  {notifications > 0 && (
-                    <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {notifications}
-                    </span>
-                  )}
-                </button>
-
-                {/* Profile Dropdown */}
-                <div className="relative profile-dropdown">
-                  <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                  >
-                    <img
-                      src={getUserAvatar(userData, 40)}
-                      alt={userData?.fullName || "User"}
-                      className="w-10 h-10 rounded-full border-2 border-pink-500"
-                    />
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-600 transition-transform ${
-                        showProfileMenu ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {userData?.fullName || "User"}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {userData?.email || currentUser?.email}
-                        </p>
-                      </div>
-
-                      <Link
-                        to="/profile"
-                        onClick={() => setShowProfileMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        My Profile
-                      </Link>
-
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          handleLogout();
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Parento
+          </span>
         </div>
+
+        {/* Desktop Links */}
+        <div className="hidden md:flex gap-1 items-center">
+          {navLinks.map((link) => (
+            <button
+              key={link.path}
+              onClick={() => navigate(link.path)}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-all
+                ${
+                  isActive(link.path)
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+            >
+              <link.icon size={16} />
+              {link.name}
+            </button>
+          ))}
+
+          {!currentUser ? (
+            <>
+              <button
+                onClick={() => navigate("/login")}
+                className={`ml-2 px-4 py-2 rounded-lg font-semibold ${
+                  isActive("/login")
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    : "text-purple-600 hover:bg-purple-50"
+                }`}
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:opacity-90"
+              >
+                Signup
+              </button>
+            </>
+          ) : (
+            <div className="relative ml-2" ref={profileRef}>
+              <button
+                onClick={() => setShowProfile(!showProfile)}
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white font-bold"
+              >
+                {currentUser.displayName?.[0]?.toUpperCase() || "U"}
+              </button>
+
+              {showProfile && (
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border">
+                  <button
+                    onClick={() => navigate("/profile")}
+                    className={`w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 ${
+                      isActive("/profile") ? "text-blue-600 font-semibold" : ""
+                    }`}
+                  >
+                    <User size={16} /> Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          className="md:hidden p-2"
+        >
+          {showMobileMenu ? <X /> : <Menu />}
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden border-t bg-white px-4 py-3 space-y-2">
+          {navLinks.map((link) => (
+            <button
+              key={link.path}
+              onClick={() => {
+                navigate(link.path);
+                setShowMobileMenu(false);
+              }}
+              className={`w-full px-4 py-3 rounded-lg flex items-center gap-3 transition-all
+                ${
+                  isActive(link.path)
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                    : "hover:bg-gray-100 text-gray-700"
+                }`}
+            >
+              <link.icon size={18} />
+              {link.name}
+            </button>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }

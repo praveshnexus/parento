@@ -142,8 +142,8 @@ export default function Dashboard() {
           <Service
             color="bg-purple-500"
             icon={<Users />}
-            label="Community"
-            onClick={() => navigate("/community")}
+            label="Comunity"
+            onClick={() => navigate("/comunity")}
           />
           <Service
             color="bg-yellow-500"

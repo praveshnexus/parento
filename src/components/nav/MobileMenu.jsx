@@ -17,7 +17,7 @@ export default function MobileMenu({ onClose }) {
     { name: "Dashboard", path: "/dashboard", icon: Home },
     { name: "Track", path: "/track", icon: Target },
     { name: "Doctors", path: "/consult", icon: Stethoscope },
-    { name: "Community", path: "/community", icon: Users },
+    { name: "Comunity", path: "/comunity", icon: Users },
     { name: "Resources", path: "/learningresources", icon: BookOpen },
   ];
 

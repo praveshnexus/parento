@@ -3,52 +3,52 @@ import {
   Home,
   Target,
   Users,
-  BookOpen,
   User,
-  Info,
-  Mail,
+  Stethoscope,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
 
-  const publicNav = [
-    { name: "Home", path: "/", icon: Home },
-    { name: "About", path: "/about", icon: Info },
-    { name: "Contact", path: "/contact", icon: Mail },
-  ];
-
-  const privateNav = [
-    { name: "Dashboard", path: "/dashboard", icon: Home },
+  const navItems = [
+    { name: "Home", path: "/dashboard", icon: Home },
     { name: "Track", path: "/track", icon: Target },
+    { name: "Doctors", path: "/consult", icon: Stethoscope },
     { name: "Community", path: "/community", icon: Users },
-    { name: "Resources", path: "/learningresources", icon: BookOpen },
     { name: "Profile", path: "/profile", icon: User },
   ];
 
-  const navItems = currentUser ? privateNav : publicNav;
-  const isActive = (path) => location.pathname === path;
+  // ✅ Better active detection (section-based)
+  const isActive = (path) =>
+    location.pathname === path ||
+    location.pathname.startsWith(path + "/");
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-50">
-      <div className="flex justify-around py-2">
-        {navItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-1 text-xs px-3 py-2 rounded-xl ${
-              isActive(item.path)
-                ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white"
-                : "text-gray-500"
-            }`}
-          >
-            <item.icon size={20} />
-            {item.name}
-          </button>
-        ))}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-40">
+      <div className="flex justify-around items-center h-16 px-2">
+        {navItems.map((item) => {
+          const active = isActive(item.path);
+          const Icon = item.icon;
+
+          return (
+            <motion.button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              whileTap={{ scale: 0.9 }}
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl text-[11px] font-medium transition-colors
+                ${
+                  active
+                    ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white"
+                    : "text-gray-500"
+                }`}
+            >
+              <Icon size={20} />
+              {item.name}
+            </motion.button>
+          );
+        })}
       </div>
     </nav>
   );

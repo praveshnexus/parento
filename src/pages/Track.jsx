@@ -27,18 +27,52 @@ import {
   doc,
   Timestamp,
 } from "firebase/firestore";
-import BottomNav from "../components/BottomNav";
+
+/* ---------------- CONSTANTS ---------------- */
 
 const categories = [
-  { id: "all", name: "All Categories", icon: TrendingUp, color: "blue" },
-  { id: "physical", name: "Physical", icon: Baby, color: "green" },
-  { id: "cognitive", name: "Cognitive", icon: Brain, color: "purple" },
-  { id: "social", name: "Social", icon: Users, color: "pink" },
-  { id: "language", name: "Language", icon: MessageCircle, color: "red" },
+  {
+    id: "all",
+    name: "All",
+    icon: TrendingUp,
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+  },
+  {
+    id: "physical",
+    name: "Physical",
+    icon: Baby,
+    bg: "bg-green-100",
+    text: "text-green-700",
+  },
+  {
+    id: "cognitive",
+    name: "Cognitive",
+    icon: Brain,
+    bg: "bg-purple-100",
+    text: "text-purple-700",
+  },
+  {
+    id: "social",
+    name: "Social",
+    icon: Users,
+    bg: "bg-pink-100",
+    text: "text-pink-700",
+  },
+  {
+    id: "language",
+    name: "Language",
+    icon: MessageCircle,
+    bg: "bg-red-100",
+    text: "text-red-700",
+  },
 ];
+
+/* ---------------- COMPONENT ---------------- */
 
 export default function Track() {
   const { currentUser } = useAuth();
+
   const [milestones, setMilestones] = useState([]);
   const [filteredMilestones, setFilteredMilestones] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -53,390 +87,285 @@ export default function Track() {
     expectedAge: "",
   });
 
+  /* ---------------- LOAD DATA ---------------- */
+
   useEffect(() => {
+    if (!currentUser) return;
     loadMilestones();
   }, [currentUser]);
 
   useEffect(() => {
-    let filtered = milestones;
+    let data = milestones;
 
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(
-        (m) => m.category.toLowerCase() === selectedCategory
-      );
+      data = data.filter((m) => m.category === selectedCategory);
     }
 
     if (searchQuery) {
-      filtered = filtered.filter(
+      data = data.filter(
         (m) =>
           m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           m.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    setFilteredMilestones(filtered);
+    setFilteredMilestones(data);
   }, [milestones, selectedCategory, searchQuery]);
 
   const loadMilestones = async () => {
-    if (!currentUser) return;
-
     try {
       setLoading(true);
       const q = query(
         collection(db, "milestones"),
         where("userId", "==", currentUser.uid)
       );
+      const snap = await getDocs(q);
 
-      const querySnapshot = await getDocs(q);
-      const milestonesData = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-        };
-      });
+      const data = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate?.() || new Date(),
+      }));
 
-      milestonesData.sort((a, b) => b.createdAt - a.createdAt);
-      setMilestones(milestonesData);
-    } catch (error) {
+      data.sort((a, b) => b.createdAt - a.createdAt);
+      setMilestones(data);
+    } catch {
       toast.error("Failed to load milestones");
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleMilestone = async (milestoneId, currentStatus) => {
+  /* ---------------- ACTIONS ---------------- */
+
+  const toggleMilestone = async (id, status) => {
     try {
-      const milestoneRef = doc(db, "milestones", milestoneId);
-      await updateDoc(milestoneRef, {
-        isCompleted: !currentStatus,
+      await updateDoc(doc(db, "milestones", id), {
+        isCompleted: !status,
       });
 
       setMilestones((prev) =>
         prev.map((m) =>
-          m.id === milestoneId ? { ...m, isCompleted: !currentStatus } : m
+          m.id === id ? { ...m, isCompleted: !status } : m
         )
       );
 
-      if (!currentStatus) {
-        toast.success("🎉 Milestone completed!", {
-          icon: "✅",
-        });
-      } else {
-        toast("Milestone marked as incomplete", {
-          icon: "⏳",
-        });
-      }
-    } catch (error) {
-      toast.error("Failed to update milestone");
+      toast.success(
+        !status ? "Milestone completed 🎉" : "Marked as incomplete"
+      );
+    } catch {
+      toast.error("Update failed");
     }
   };
 
-  const deleteMilestone = async (milestoneId) => {
-    if (!confirm("Are you sure you want to delete this milestone?")) {
-      return;
-    }
+  const deleteMilestone = async (id) => {
+    if (!confirm("Delete this milestone?")) return;
 
     try {
-      await deleteDoc(doc(db, "milestones", milestoneId));
-      setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
-      toast.success("Milestone deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete milestone");
+      await deleteDoc(doc(db, "milestones", id));
+      setMilestones((prev) => prev.filter((m) => m.id !== id));
+      toast.success("Milestone deleted");
+    } catch {
+      toast.error("Delete failed");
     }
   };
 
   const handleAddMilestone = async (e) => {
     e.preventDefault();
 
-    if (!newMilestone.title.trim() || !newMilestone.expectedAge.trim()) {
-      toast.error("Please fill in all required fields");
+    if (!newMilestone.title || !newMilestone.expectedAge) {
+      toast.error("Please fill required fields");
       return;
     }
 
-    const loadingToast = toast.loading("Adding milestone...");
-
     try {
-      const milestoneData = {
+      await addDoc(collection(db, "milestones"), {
         userId: currentUser.uid,
-        category: newMilestone.category,
-        title: newMilestone.title.trim(),
-        description: newMilestone.description.trim(),
-        expectedAge: newMilestone.expectedAge.trim(),
+        ...newMilestone,
         isCompleted: false,
         createdAt: Timestamp.now(),
-      };
+      });
 
-      await addDoc(collection(db, "milestones"), milestoneData);
-      await loadMilestones();
-
+      setShowAddModal(false);
       setNewMilestone({
         category: "physical",
         title: "",
         description: "",
         expectedAge: "",
       });
-      setShowAddModal(false);
 
-      toast.success("Milestone added successfully!", {
-        id: loadingToast,
-      });
-    } catch (error) {
-      toast.error("Failed to add milestone", {
-        id: loadingToast,
-      });
+      loadMilestones();
+      toast.success("Milestone added");
+    } catch {
+      toast.error("Failed to add milestone");
     }
   };
 
-  const stats = {
-    total: milestones.length,
-    completed: milestones.filter((m) => m.isCompleted).length,
-    pending: milestones.filter((m) => !m.isCompleted).length,
-    completionRate:
-      milestones.length > 0
-        ? Math.round(
-            (milestones.filter((m) => m.isCompleted).length /
-              milestones.length) *
-              100
-          )
-        : 0,
-  };
+  /* ---------------- STATS ---------------- */
+
+  const completed = milestones.filter((m) => m.isCompleted).length;
+  const pending = milestones.length - completed;
+  const rate =
+    milestones.length > 0
+      ? Math.round((completed / milestones.length) * 100)
+      : 0;
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
+    <div className="space-y-6">
       <Toaster position="top-center" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
-        <div className="mb-8">
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl font-bold text-gray-800 mb-2"
-          >
-            Track Milestones
-          </motion.h1>
-          <p className="text-gray-600">
-            Monitor your child's development journey
-          </p>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl p-6 shadow-sm"
-          >
-            <div className="text-3xl font-bold text-blue-600 mb-1">
-              {stats.total}
-            </div>
-            <div className="text-sm text-gray-600">Total Milestones</div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl p-6 shadow-sm"
-          >
-            <div className="text-3xl font-bold text-green-600 mb-1">
-              {stats.completed}
-            </div>
-            <div className="text-sm text-gray-600">Completed</div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl p-6 shadow-sm"
-          >
-            <div className="text-3xl font-bold text-orange-600 mb-1">
-              {stats.pending}
-            </div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl p-6 shadow-sm"
-          >
-            <div className="text-3xl font-bold text-purple-600 mb-1">
-              {stats.completionRate}%
-            </div>
-            <div className="text-sm text-gray-600">Completion Rate</div>
-          </motion.div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search milestones..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition flex items-center justify-center"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Milestone
-            </motion.button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <motion.button
-                  key={cat.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition flex items-center ${
-                    selectedCategory === cat.id
-                      ? `bg-${cat.color}-500 text-white`
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {cat.name}
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Milestones List */}
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-gray-600 mt-4">Loading milestones...</p>
-          </div>
-        ) : filteredMilestones.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white rounded-xl shadow-sm p-12 text-center"
-          >
-            <Baby className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              {searchQuery || selectedCategory !== "all"
-                ? "No Milestones Found"
-                : "No Milestones Yet"}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery || selectedCategory !== "all"
-                ? "Try adjusting your filters"
-                : "Start tracking your child's development milestones"}
-            </p>
-            {!searchQuery && selectedCategory === "all" && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition"
-              >
-                Add Your First Milestone
-              </button>
-            )}
-          </motion.div>
-        ) : (
-          <div className="grid gap-4">
-            <AnimatePresence>
-              {filteredMilestones.map((milestone, index) => {
-                const category = categories.find(
-                  (c) => c.id === milestone.category.toLowerCase()
-                );
-                const Icon = category?.icon || Baby;
-
-                return (
-                  <motion.div
-                    key={milestone.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition ${
-                      milestone.isCompleted ? "bg-green-50" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <button
-                        onClick={() =>
-                          toggleMilestone(milestone.id, milestone.isCompleted)
-                        }
-                        className="mt-1 flex-shrink-0"
-                      >
-                        {milestone.isCompleted ? (
-                          <CheckCircle2 className="w-6 h-6 text-green-500" />
-                        ) : (
-                          <Circle className="w-6 h-6 text-gray-400 hover:text-green-500 transition" />
-                        )}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex-1 min-w-0">
-                            <h3
-                              className={`text-lg font-semibold ${
-                                milestone.isCompleted
-                                  ? "text-green-700 line-through"
-                                  : "text-gray-800"
-                              }`}
-                            >
-                              {milestone.title}
-                            </h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {milestone.description}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium bg-${
-                              category?.color || "blue"
-                            }-100 text-${category?.color || "blue"}-700 flex-shrink-0`}
-                          >
-                            <Icon className="w-3 h-3 inline mr-1" />
-                            {category?.name || milestone.category}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span>Expected: {milestone.expectedAge}</span>
-                            {milestone.isCompleted && (
-                              <span className="text-green-600 font-medium">
-                                ✓ Completed
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => deleteMilestone(milestone.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0"
-                            title="Delete milestone"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+      {/* HEADER */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-800">
+          Track Milestones
+        </h1>
+        <p className="text-sm text-gray-600">
+          Monitor your child’s development journey
+        </p>
       </div>
 
-      {/* Add Milestone Modal */}
+      {/* STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat label="Total" value={milestones.length} color="text-blue-600" />
+        <Stat label="Completed" value={completed} color="text-green-600" />
+        <Stat label="Pending" value={pending} color="text-orange-600" />
+        <Stat label="Completion" value={`${rate}%`} color="text-purple-600" />
+      </div>
+
+      {/* SEARCH & ADD */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search milestones..."
+              className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-lg outline-none"
+            />
+          </div>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-5 py-2 rounded-lg font-semibold flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Add
+          </button>
+        </div>
+
+        {/* CATEGORY FILTER */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 whitespace-nowrap ${
+                  selectedCategory === cat.id
+                    ? `${cat.bg} ${cat.text}`
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                <Icon size={14} />
+                {cat.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* LIST */}
+      {loading ? (
+        <div className="text-center py-10 text-gray-500">
+          Loading milestones...
+        </div>
+      ) : filteredMilestones.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+          <Baby className="mx-auto mb-4 text-gray-400" size={48} />
+          <p className="font-semibold text-gray-800">
+            No milestones found
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <AnimatePresence>
+            {filteredMilestones.map((m) => {
+              const cat =
+                categories.find((c) => c.id === m.category) ||
+                categories[0];
+              const Icon = cat.icon;
+
+              return (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className={`bg-white rounded-2xl p-4 shadow-sm ${
+                    m.isCompleted ? "bg-green-50" : ""
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => toggleMilestone(m.id, m.isCompleted)}
+                    >
+                      {m.isCompleted ? (
+                        <CheckCircle2 className="text-green-600" />
+                      ) : (
+                        <Circle className="text-gray-400" />
+                      )}
+                    </button>
+
+                    <div className="flex-1">
+                      <div className="flex justify-between gap-2">
+                        <h3
+                          className={`font-semibold ${
+                            m.isCompleted
+                              ? "line-through text-gray-500"
+                              : "text-gray-800"
+                          }`}
+                        >
+                          {m.title}
+                        </h3>
+
+                        <span
+                          className={`px-2 py-1 rounded-md text-xs ${cat.bg} ${cat.text}`}
+                        >
+                          <Icon size={12} className="inline mr-1" />
+                          {cat.name}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-gray-600 mt-1">
+                        {m.description}
+                      </p>
+
+                      <div className="flex justify-between items-center mt-3">
+                        <span className="text-xs text-gray-500">
+                          Expected: {m.expectedAge}
+                        </span>
+
+                        <button
+                          onClick={() => deleteMilestone(m.id)}
+                          className="text-red-500 hover:bg-red-50 p-1 rounded"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* ADD MODAL */}
       <AnimatePresence>
         {showAddModal && (
           <>
@@ -444,122 +373,89 @@ export default function Track() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40"
+              className="fixed inset-0 bg-black/40 z-40"
               onClick={() => setShowAddModal(false)}
             />
+
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    Add Milestone
-                  </h2>
-                  <button
-                    onClick={() => setShowAddModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+                <h2 className="font-bold text-lg mb-4">Add Milestone</h2>
+
+                <form onSubmit={handleAddMilestone} className="space-y-3">
+                  <select
+                    value={newMilestone.category}
+                    onChange={(e) =>
+                      setNewMilestone({
+                        ...newMilestone,
+                        category: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
                   >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+                    {categories
+                      .filter((c) => c.id !== "all")
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
 
-                <form onSubmit={handleAddMilestone} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category
-                    </label>
-                    <select
-                      value={newMilestone.category}
-                      onChange={(e) =>
-                        setNewMilestone({
-                          ...newMilestone,
-                          category: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    >
-                      {categories
-                        .filter((c) => c.id !== "all")
-                        .map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                  <input
+                    placeholder="Title"
+                    value={newMilestone.title}
+                    onChange={(e) =>
+                      setNewMilestone({
+                        ...newMilestone,
+                        title: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={newMilestone.title}
-                      onChange={(e) =>
-                        setNewMilestone({
-                          ...newMilestone,
-                          title: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., First Steps"
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
+                  <textarea
+                    placeholder="Description"
+                    rows={3}
+                    value={newMilestone.description}
+                    onChange={(e) =>
+                      setNewMilestone({
+                        ...newMilestone,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg resize-none"
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={newMilestone.description}
-                      onChange={(e) =>
-                        setNewMilestone({
-                          ...newMilestone,
-                          description: e.target.value,
-                        })
-                      }
-                      placeholder="Describe the milestone..."
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                    />
-                  </div>
+                  <input
+                    placeholder="Expected Age"
+                    value={newMilestone.expectedAge}
+                    onChange={(e) =>
+                      setNewMilestone({
+                        ...newMilestone,
+                        expectedAge: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Expected Age *
-                    </label>
-                    <input
-                      type="text"
-                      value={newMilestone.expectedAge}
-                      onChange={(e) =>
-                        setNewMilestone({
-                          ...newMilestone,
-                          expectedAge: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 12 months"
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowAddModal(false)}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
+                      className="flex-1 border rounded-lg py-2"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg py-2"
                     >
-                      Add Milestone
+                      Add
                     </button>
                   </div>
                 </form>
@@ -568,8 +464,15 @@ export default function Track() {
           </>
         )}
       </AnimatePresence>
-
-      <BottomNav />
     </div>
   );
 }
+
+/* ---------------- SMALL COMPONENTS ---------------- */
+
+const Stat = ({ label, value, color }) => (
+  <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className={`text-xl font-bold ${color}`}>{value}</div>
+    <div className="text-xs text-gray-600">{label}</div>
+  </div>
+);

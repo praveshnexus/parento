@@ -20,6 +20,7 @@ import Consult from "./pages/Consult";
 import Comunity from "./pages/Comunity";
 import Profile from "./pages/Profile";
 import LearningResources from "./pages/LearningResources";
+import DoctorDetail from "./pages/DoctorDetails";
 
 export default function App() {
   return (
@@ -57,6 +58,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Consult />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ✅ DOCTOR DETAIL ROUTE (FIXED) */}
+          <Route
+            path="/consult/:id"
+            element={
+              <ProtectedRoute>
+                <DoctorDetail />
               </ProtectedRoute>
             }
           />

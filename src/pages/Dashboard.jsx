@@ -1,238 +1,306 @@
-import { useState, useEffect } from "react";
-import toast, { Toaster } from "react-hot-toast";
-import {
-  Heart,
-  MessageCircle,
-  Plus,
-  Trash2,
-  Send,
-  X,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import {
-  collection,
-  addDoc,
-  query,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  doc,
-  arrayUnion,
-  arrayRemove,
-  Timestamp,
-} from "firebase/firestore";
+  Target,
+  Users,
+  BookOpen,
+  Stethoscope,
+  Pencil,
+  Check,
+  X,
+  Star,
+} from "lucide-react";
 
-export default function Community() {
-  const { currentUser, userData } = useAuth();
+export default function Dashboard() {
+  const { currentUser, userData, updateUserData } = useAuth();
+  const navigate = useNavigate();
 
+  const [editingName, setEditingName] = useState(false);
+  const [childName, setChildName] = useState("Your Child");
+  const [tempName, setTempName] = useState("");
+
+  const [milestones, setMilestones] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [content, setContent] = useState("");
 
+  /* ---------------- INIT CHILD NAME ---------------- */
   useEffect(() => {
-    loadPosts();
-  }, []);
+    if (!userData) return;
+    const firstChild = userData.children?.[0];
+    const name = firstChild?.name || "Your Child";
+    setChildName(name);
+    setTempName(name);
+  }, [userData]);
 
-  const loadPosts = async () => {
-    try {
-      setLoading(true);
-      const snap = await getDocs(query(collection(db, "posts")));
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        likes: d.data().likes || [],
-        createdAt: d.data().createdAt?.toDate?.() || new Date(),
-      }));
-      data.sort((a, b) => b.createdAt - a.createdAt);
-      setPosts(data);
-    } catch {
-      toast.error("Failed to load posts");
-    } finally {
-      setLoading(false);
-    }
-  };
+  /* ---------------- LOAD DATA ---------------- */
+  useEffect(() => {
+    if (!currentUser) return;
 
-  const createPost = async () => {
-    if (!content.trim()) return toast.error("Write something");
+    const loadData = async () => {
+      const mSnap = await getDocs(
+        query(
+          collection(db, "milestones"),
+          where("userId", "==", currentUser.uid)
+        )
+      );
+      setMilestones(mSnap.docs.map((d) => d.data()));
 
-    try {
-      await addDoc(collection(db, "posts"), {
-        userId: currentUser.uid,
-        userName: userData?.fullName || "Parent",
-        content: content.trim(),
-        likes: [],
-        createdAt: Timestamp.now(),
-      });
-      setContent("");
-      setShowCreate(false);
-      loadPosts();
-      toast.success("Post created");
-    } catch {
-      toast.error("Failed to create post");
-    }
-  };
+      const pSnap = await getDocs(collection(db, "posts"));
+      setPosts(pSnap.docs.map((d) => d.data()).slice(0, 2));
+    };
 
-  const toggleLike = async (id, likes) => {
-    const ref = doc(db, "posts", id);
-    const liked = likes.includes(currentUser.uid);
+    loadData();
+  }, [currentUser]);
 
-    await updateDoc(ref, {
-      likes: liked
-        ? arrayRemove(currentUser.uid)
-        : arrayUnion(currentUser.uid),
+  /* ---------------- SAVE CHILD NAME ---------------- */
+  const saveChildName = async () => {
+    const updatedChildren =
+      userData.children?.length > 0
+        ? [{ ...userData.children[0], name: tempName }]
+        : [{ name: tempName }];
+
+    await updateUserData(currentUser.uid, {
+      children: updatedChildren,
     });
 
-    setPosts((p) =>
-      p.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              likes: liked
-                ? post.likes.filter((l) => l !== currentUser.uid)
-                : [...post.likes, currentUser.uid],
-            }
-          : post
-      )
-    );
+    setChildName(tempName);
+    setEditingName(false);
   };
 
-  const deletePost = async (id, uid) => {
-    if (uid !== currentUser.uid) return;
-    await deleteDoc(doc(db, "posts", id));
-    setPosts((p) => p.filter((x) => x.id !== id));
-    toast.success("Post deleted");
-  };
+  /* ---------------- PROGRESS (DUMMY) ---------------- */
+  const motorProgress = Math.min(75, milestones.length * 10);
+  const communicationProgress = Math.min(60, milestones.length * 8);
+
+  /* ---------------- DOCTORS (DASHBOARD PREVIEW) ---------------- */
+  const doctors = [
+    { name: "Dr. Meera Patel", specialty: "Pediatrician", rating: 4.9 },
+    { name: "Dr. Rajesh Gupta", specialty: "Nutritionist", rating: 4.7 },
+    { name: "Dr. Ananya Rao", specialty: "Child Psychologist", rating: 4.8 },
+    { name: "Dr. Sandeep Verma", specialty: "Physiotherapist", rating: 4.6 },
+  ];
 
   return (
-    <div className="space-y-6 pb-24">
-      <Toaster />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="pb-24 space-y-6"
+    >
+      {/* GREETING */}
+      <section>
+        <h2 className="text-lg font-bold text-gray-800">Hello 👋</h2>
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">Community</h1>
-        <p className="text-sm text-gray-600">
-          Share experiences with other parents
-        </p>
-      </div>
-
-      {/* CREATE */}
-      <button
-        onClick={() => setShowCreate(true)}
-        className="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3 text-blue-600 font-medium"
-      >
-        <Plus size={18} />
-        Create post
-      </button>
-
-      {/* POSTS */}
-      {loading ? (
-        <p className="text-center text-gray-500">Loading...</p>
-      ) : posts.length === 0 ? (
-        <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-          <MessageCircle size={40} className="mx-auto text-gray-400 mb-3" />
-          <p className="font-semibold text-gray-800">No posts yet</p>
-        </div>
-      ) : (
-        posts.map((post) => (
-          <div
-            key={post.id}
-            className="bg-white rounded-2xl p-4 shadow-sm space-y-3"
-          >
-            {/* USER */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold">
-                  {post.userName?.[0]}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {post.userName}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {post.createdAt.toDateString()}
-                  </p>
-                </div>
-              </div>
-
-              {post.userId === currentUser.uid && (
-                <button onClick={() => deletePost(post.id, post.userId)}>
-                  <Trash2 size={16} className="text-red-400" />
-                </button>
-              )}
-            </div>
-
-            {/* CONTENT */}
-            <p className="text-sm text-gray-700 leading-relaxed">
-              {post.content}
-            </p>
-
-            {/* ACTIONS */}
-            <div className="flex items-center gap-6 pt-2 border-t">
-              <button
-                onClick={() => toggleLike(post.id, post.likes)}
-                className={`flex items-center gap-1 text-sm ${
-                  post.likes.includes(currentUser.uid)
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
-              >
-                <Heart
-                  size={16}
-                  className={
-                    post.likes.includes(currentUser.uid)
-                      ? "fill-current"
-                      : ""
-                  }
-                />
-                {post.likes.length}
-              </button>
-
-              <div className="flex items-center gap-1 text-sm text-gray-500">
-                <MessageCircle size={16} />
-                Comments
-              </div>
-            </div>
+        {!editingName ? (
+          <p className="text-sm text-gray-600 flex items-center gap-1">
+            Let’s track
+            <span className="font-semibold text-gray-800">{childName}</span>
+            ’s progress today
+            <button onClick={() => setEditingName(true)}>
+              <Pencil size={14} className="text-gray-400 ml-1" />
+            </button>
+          </p>
+        ) : (
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              className="px-2 py-1 border rounded-md text-sm"
+            />
+            <button onClick={saveChildName}>
+              <Check size={16} className="text-green-600" />
+            </button>
+            <button
+              onClick={() => {
+                setTempName(childName);
+                setEditingName(false);
+              }}
+            >
+              <X size={16} className="text-red-500" />
+            </button>
           </div>
-        ))
-      )}
+        )}
+      </section>
 
-      {/* CREATE MODAL */}
-      {showCreate && (
-        <>
-          <div
-            onClick={() => setShowCreate(false)}
-            className="fixed inset-0 bg-black/40 z-40"
+      {/* TOP SERVICES */}
+      <section>
+        <h3 className="text-sm font-semibold mb-3">Top Services</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Service
+            color="bg-blue-500"
+            icon={<Target />}
+            label="Track"
+            onClick={() => navigate("/track")}
           />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md p-6">
-              <div className="flex justify-between mb-4">
-                <h2 className="font-bold text-lg">Create Post</h2>
-                <button onClick={() => setShowCreate(false)}>
-                  <X />
-                </button>
+          <Service
+            color="bg-green-500"
+            icon={<Stethoscope />}
+            label="Doctors"
+            onClick={() => navigate("/consult")}
+          />
+          <Service
+            color="bg-purple-500"
+            icon={<Users />}
+            label="Community"
+            onClick={() => navigate("/community")}
+          />
+          <Service
+            color="bg-yellow-500"
+            icon={<BookOpen />}
+            label="Resources"
+            onClick={() => navigate("/learningresources")}
+          />
+        </div>
+      </section>
+
+      {/* TODAY ACTIVITY */}
+      <section>
+        <h3 className="text-sm font-semibold mb-3">Today’s Activity Plan</h3>
+        <motion.div
+          whileTap={{ scale: 0.98 }}
+          whileHover={{ y: -2 }}
+          className="bg-white rounded-2xl shadow-sm overflow-hidden"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c"
+            className="h-36 w-full object-cover"
+            alt="activity"
+          />
+          <div className="p-3">
+            <p className="font-medium text-sm">Motor Skill Development</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Improve coordination through play
+            </p>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* DEVELOPMENT TRACKING */}
+      <section>
+        <h3 className="text-sm font-semibold mb-3">Development Tracking</h3>
+        <div className="space-y-3 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+          <Progress label="Motor Skill" value={motorProgress} />
+          <Progress label="Communication Skill" value={communicationProgress} />
+        </div>
+      </section>
+
+      {/* EXPERT CONNECT — FINAL DESIGN MATCH */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">Expert Connect</h3>
+          <button
+            onClick={() => navigate("/consult")}
+            className="text-xs text-blue-600 font-medium"
+          >
+            View all
+          </button>
+        </div>
+
+        <div className="flex gap-4 overflow-x-auto pb-3">
+          {doctors.map((doc, i) => (
+            <motion.div
+              key={i}
+              whileTap={{ scale: 0.96 }}
+              whileHover={{ y: -2 }}
+              className="
+          min-w-[170px]
+          bg-white
+          rounded-2xl
+          p-4
+          shadow-sm
+          flex
+          flex-col
+          items-center
+          text-center
+        "
+            >
+              {/* Avatar */}
+              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg mb-3">
+                {doc.name.split(" ")[1][0]}
               </div>
 
-              <textarea
-                rows={4}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Share your experience..."
-                className="w-full border rounded-lg p-3 text-sm outline-none"
-              />
+              {/* Name */}
+              <p className="text-sm font-semibold text-gray-800 leading-tight">
+                {doc.name}
+              </p>
 
+              {/* Specialty */}
+              <p className="text-xs text-gray-500 mt-0.5">{doc.specialty}</p>
+
+              {/* Rating */}
+              <div className="flex items-center gap-1 text-xs text-yellow-500 mt-2">
+                <Star size={12} fill="currentColor" />
+                {doc.rating}
+              </div>
+
+              {/* BOOK NOW */}
               <button
-                onClick={createPost}
-                className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                onClick={() => navigate("/consult")}
+                className="
+            mt-3
+            text-xs
+            font-medium
+            text-blue-600
+            border
+            border-blue-200
+            px-4
+            py-1.5
+            rounded-full
+            hover:bg-blue-50
+            transition
+          "
               >
-                <Send size={16} />
-                Post
+                Book now
               </button>
-            </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* COMMUNITY */}
+      <section>
+        <h3 className="text-sm font-semibold mb-3">Community Highlights</h3>
+        {posts.map((p, i) => (
+          <div key={i} className="bg-white p-3 rounded-2xl shadow-sm mb-2">
+            <p className="text-sm font-medium">{p.authorName || "Parent"}</p>
+            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+              {p.content || "Our journey with Parento has been amazing."}
+            </p>
           </div>
-        </>
-      )}
-    </div>
+        ))}
+      </section>
+    </motion.div>
   );
 }
+
+/* ---------------- COMPONENTS ---------------- */
+
+const Service = ({ icon, label, color, onClick }) => (
+  <motion.div
+    whileTap={{ scale: 0.95 }}
+    whileHover={{ y: -2 }}
+    onClick={onClick}
+    className={`${color} text-white p-4 rounded-2xl flex flex-col items-center gap-2 cursor-pointer`}
+  >
+    {icon}
+    <p className="text-xs font-medium">{label}</p>
+  </motion.div>
+);
+
+const Progress = ({ label, value }) => (
+  <div>
+    <div className="flex justify-between text-xs mb-1">
+      <span>{label}</span>
+      <span>{value}%</span>
+    </div>
+    <div className="h-2 bg-gray-200 rounded-full">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${value}%` }}
+        transition={{ duration: 0.6 }}
+        className="h-2 bg-blue-500 rounded-full"
+      />
+    </div>
+  </div>
+);
